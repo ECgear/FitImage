@@ -176,12 +176,17 @@ git add -A && git commit -m "feat: <summary>"
 git tag vX.Y.Z && git push && git push --tags
 gh release create vX.Y.Z --notes-from-tag      # or --notes "..."
 
-# 3. (optional) publish to npm — 2FA is on the user's account
-npm publish
+# 3. (optional) publish to npm — published as the SCOPED name @ecgear/fitimage
+#    (the bare name "fitimage" is refused by npm as too similar to "fit-image").
+#    publishConfig.access=public makes the scoped package public; 2FA OTP is on
+#    the user's npm account. The installed CLI command stays `fitimage`.
+npm publish            # add --otp=<code> if prompted for a one-time password
 ```
 
 `files` in `package.json` controls the tarball. New runtime modules under `src/`
-are included automatically (the whole `src` dir ships); docs/tests do not.
+are included automatically (the whole `src` dir ships); docs/tests do not. The
+npm package name is **`@ecgear/fitimage`** while the CLI command and repo are
+named `fitimage` / `FitImage`.
 
 ---
 
