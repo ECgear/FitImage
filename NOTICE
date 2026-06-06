@@ -1,0 +1,32 @@
+FitImage
+Copyright (c) 2026 ECgear
+Licensed under the MIT License (see LICENSE).
+
+================================================================================
+Licensing & credits
+================================================================================
+
+FitImage is an independent tool. It does NOT include or redistribute the source
+code of Google's Squoosh; Squoosh is mentioned only as inspiration.
+
+FitImage depends on the following at runtime (installed via npm, not vendored
+into this repository):
+
+  - sharp           Apache-2.0      https://github.com/lovell/sharp
+      bundles libvips (LGPL-2.1+) and the codecs below.
+  - commander       MIT             https://github.com/tj/commander.js
+
+Codec licensing of the paths FitImage actually uses (via sharp/libvips):
+
+  - JPEG : mozjpeg / libjpeg-turbo   BSD-3-Clause / IJG (permissive)
+  - PNG  : zlib / libpng             zlib / libpng license (permissive)
+  - WebP : libwebp                   BSD-3-Clause (permissive)
+
+FitImage deliberately does NOT use sharp's `png({ palette: true })` option,
+which would pull in libimagequant (GPL). All code paths used by FitImage are
+therefore under permissive (BSD/zlib/MIT/Apache/LGPL) terms compatible with the
+MIT license of this project.
+
+Because these libraries are consumed as npm dependencies (downloaded by the end
+user at install time) and are not redistributed within this repository, no
+additional redistribution obligations are imposed by this project.

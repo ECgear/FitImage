@@ -1,0 +1,59 @@
+{
+  "name": "fitimage",
+  "version": "0.1.0",
+  "description": "Cross-platform batch image compressor — convert WebP to JPG and shrink JPEG/PNG, powered by sharp. No deprecated dependencies, no GPL codecs.",
+  "type": "module",
+  "bin": {
+    "fitimage": "bin/cli.js"
+  },
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node bin/cli.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "image",
+    "compression",
+    "compress",
+    "optimize",
+    "optimizer",
+    "webp",
+    "jpeg",
+    "jpg",
+    "png",
+    "mozjpeg",
+    "sharp",
+    "cli",
+    "batch",
+    "convert",
+    "cross-platform"
+  ],
+  "author": "ECgear",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECgear/FitImage.git"
+  },
+  "homepage": "https://github.com/ECgear/FitImage#readme",
+  "bugs": {
+    "url": "https://github.com/ECgear/FitImage/issues"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "sharp": "^0.33.5"
+  }
+}
