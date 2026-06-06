@@ -8,7 +8,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
 
-export const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+export const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 
 export const DEFAULTS = {
   quality: 75,       // JPEG / WebP quality (1-100)
@@ -120,6 +120,10 @@ export async function processFile(file, opts, baseDir) {
   } else if (ext === '.webp') {
     outBuffer = await encodeJpeg(input, opts.quality);
     outExt = '.jpg';
+  } else if (ext === '.gif') {
+    // Re-encode GIF in place (keeps the palette format).
+    outBuffer = await encodeGif(input);
+    outExt = '.gif';
   } else if (ext === '.png') {
     if (opts.pngToJpg) {
       outBuffer = await encodeJpeg(input, opts.quality);

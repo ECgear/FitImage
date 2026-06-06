@@ -37,6 +37,15 @@ async function exists(p) {
   try { await fs.access(p); return true; } catch { return false; }
 }
 
+async function writeGif(file) {
+  const raw = noisyRaw();
+  const data = await sharp(raw, { raw: { width: W, height: H, channels: C } })
+    .gif()
+    .toBuffer();
+  await fs.writeFile(file, data);
+  return data.length;
+}
+
 test('collectImages finds images recursively', async () => {
   const dir = await tmpdir();
   await fs.mkdir(path.join(dir, 'sub'));
@@ -97,6 +106,48 @@ test('dry-run writes and deletes nothing', async () => {
   const after = (await fs.stat(file)).size;
   assert.equal(after, before, 'file must be untouched in dry-run');
   assert.equal(summary.written, 0);
+});
+
+test('GIF is collected as input (IMAGE_EXTS includes .gif)', async () => {
+  const dir = await tmpdir();
+  await writeGif(path.join(dir, 'a.gif'));
+  await writeJpeg(path.join(dir, 'b.jpg'), 90);
+  const all = await collectImages(dir, true);
+  assert.equal(all.length, 2);
+  assert.ok(all.some(f => f.endsWith('.gif')));
+});
+
+test('GIF input converts to JPG via --format jpg', async () => {
+  const dir = await tmpdir();
+  await writeGif(path.join(dir, 'a.gif'));
+  const { summary } = await run(dir, { format: 'jpg' });
+  assert.equal(summary.errors, 0);
+  assert.ok(await exists(path.join(dir, 'a.jpg')), 'a.jpg created');
+  assert.ok(!(await exists(path.join(dir, 'a.gif'))), 'a.gif removed');
+});
+
+test('GIF input converts to WebP via --format webp', async () => {
+  const dir = await tmpdir();
+  await writeGif(path.join(dir, 'a.gif'));
+  const { summary } = await run(dir, { format: 'webp' });
+  assert.equal(summary.errors, 0);
+  assert.ok(await exists(path.join(dir, 'a.webp')), 'a.webp created');
+});
+
+test('GIF input converts to PNG via --format png', async () => {
+  const dir = await tmpdir();
+  await writeGif(path.join(dir, 'a.gif'));
+  const { summary } = await run(dir, { format: 'png' });
+  assert.equal(summary.errors, 0);
+  assert.ok(await exists(path.join(dir, 'a.png')), 'a.png created');
+});
+
+test('GIF input re-encodes in place when no --format given', async () => {
+  const dir = await tmpdir();
+  await writeGif(path.join(dir, 'a.gif'));
+  const { summary } = await run(dir, {});
+  assert.equal(summary.errors, 0);
+  assert.ok(await exists(path.join(dir, 'a.gif')), 'a.gif still present');
 });
 
 test('--out writes to a separate dir and leaves sources intact', async () => {
