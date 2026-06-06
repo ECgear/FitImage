@@ -23,7 +23,9 @@
   },
   "scripts": {
     "start": "node bin/cli.js",
-    "test": "node --test"
+    "test": "node --test",
+    "preflight": "node scripts/preflight.mjs",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "keywords": [
     "image",

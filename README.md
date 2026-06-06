@@ -55,6 +55,7 @@ fitimage ./images -q 60 --png-to-jpg --keep-original
 > would *grow* a file are skipped automatically.
 >
 > 💡 New to a folder? Run with `--dry-run` first to see what would change.
+> Keep a backup of irreplaceable images (or use `--out <dir>`) before an in-place run.
 
 ## Options
 

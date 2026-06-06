@@ -22,4 +22,6 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
+      - run: npm run preflight
+        if: runner.os == 'Linux'
       - run: npm test

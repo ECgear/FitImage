@@ -14,9 +14,13 @@ Thanks for your interest in contributing! 🙌
 ```bash
 git clone https://github.com/ECgear/FitImage.git
 cd FitImage
-npm install
+npm install   # also enables git hooks (core.hooksPath = .githooks)
 npm test
 ```
+
+> `npm install` runs `prepare`, which enables a local **preflight** secret/license
+> scan on `pre-commit` and `pre-push`. You can run it any time with `npm run preflight`.
+> A false positive can be bypassed with `git commit --no-verify` (use sparingly).
 
 ## Pull request guidelines
 
