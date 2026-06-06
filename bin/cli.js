@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { Command } from 'commander';
+import updateNotifier from 'update-notifier';
 import { run, DEFAULTS, extForFormat } from '../src/index.js';
 import { reportLines } from '../src/report.js';
 import { runInteractive } from '../src/interactive.js';
@@ -8,6 +9,9 @@ import { runInteractive } from '../src/interactive.js';
 const pkg = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8')
 );
+
+// Check for updates in the background (once per day); notify at next run if newer version found.
+updateNotifier({ pkg }).notify();
 
 function parseIntArg(name, min, max) {
   return (value) => {

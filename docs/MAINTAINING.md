@@ -10,11 +10,12 @@ changing `src/` or cutting a version.
 
 ## 1. What FitImage is
 
-A cross-platform, zero-extra-dependency batch image compressor built on
-[sharp](https://github.com/lovell/sharp). It can re-compress `.jpg/.jpeg/.png/.webp`
+A cross-platform batch image compressor built on
+[sharp](https://github.com/lovell/sharp). It can re-compress `.jpg/.jpeg/.png/.webp/.gif`
 and convert between **JPG / WebP / PNG / GIF**, either via CLI flags or a guided
-**interactive wizard**. Only `commander` and `sharp` are runtime deps; tests use
-the Node built-in `node:test`; the wizard uses the built-in `readline/promises`.
+**interactive wizard**. Runtime deps: `commander`, `sharp`, and `update-notifier`
+(background update checks; shown on next run). Tests use the Node built-in `node:test`;
+the wizard uses the built-in `readline/promises`.
 **Do not add dependencies** without a strong reason — "no deprecated deps" is a
 selling point.
 
