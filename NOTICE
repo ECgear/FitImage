@@ -13,7 +13,8 @@ FitImage depends on the following at runtime (installed via npm, not vendored
 into this repository):
 
   - sharp           Apache-2.0      https://github.com/lovell/sharp
-      bundles libvips (LGPL-2.1+) and the codecs below.
+      bundles libvips — LGPL-3.0-or-later (as distributed by the prebuilt
+      @img/sharp-libvips-* packages) — and the codecs below.
   - commander       MIT             https://github.com/tj/commander.js
 
 Codec licensing of the paths FitImage actually uses (via sharp/libvips):
@@ -30,3 +31,7 @@ MIT license of this project.
 Because these libraries are consumed as npm dependencies (downloaded by the end
 user at install time) and are not redistributed within this repository, no
 additional redistribution obligations are imposed by this project.
+
+The libvips library (LGPL) is used via sharp as a dynamically loaded native
+addon and may be replaced by the user with a compatible build, in accordance
+with the terms of the LGPL.

@@ -53,6 +53,8 @@ fitimage ./images -q 60 --png-to-jpg --keep-original
 > originals, and converted `.webp` files are replaced by `.jpg`. Use `--dry-run`
 > to preview or `--out <dir>` for a non-destructive run. Re-compressions that
 > would *grow* a file are skipped automatically.
+>
+> 💡 New to a folder? Run with `--dry-run` first to see what would change.
 
 ## Options
 
@@ -110,6 +112,11 @@ Inspired by Google's [Squoosh](https://squoosh.app/). FitImage does **not** use
 Squoosh's code; it is an independent tool built on
 [sharp](https://github.com/lovell/sharp), [libvips](https://www.libvips.org/) and
 [mozjpeg](https://github.com/mozilla/mozjpeg). Thanks to those projects.
+
+> **Disclaimer:** FitImage is not affiliated with, endorsed by, or derived from
+> Google or the Squoosh project. It is an independent reimplementation built on
+> sharp and contains no Squoosh code. All product and library names are the
+> property of their respective owners.
 
 ---
 
