@@ -1,7 +1,7 @@
 {
   "name": "fitimage",
-  "version": "0.1.0",
-  "description": "Cross-platform batch image compressor — convert WebP to JPG and shrink JPEG/PNG, powered by sharp. No deprecated dependencies, no GPL codecs.",
+  "version": "0.2.0",
+  "description": "Cross-platform batch image compressor with an interactive mode — shrink and convert between JPG/WebP/PNG/GIF, powered by sharp. No deprecated dependencies, no GPL codecs.",
   "type": "module",
   "bin": {
     "fitimage": "bin/cli.js"

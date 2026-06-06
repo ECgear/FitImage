@@ -22,11 +22,19 @@ Codec licensing of the paths FitImage actually uses (via sharp/libvips):
   - JPEG : mozjpeg / libjpeg-turbo   BSD-3-Clause / IJG (permissive)
   - PNG  : zlib / libpng             zlib / libpng license (permissive)
   - WebP : libwebp                   BSD-3-Clause (permissive)
+  - GIF  : cgif + libimagequant      MIT + BSD-2-Clause (permissive)
 
-FitImage deliberately does NOT use sharp's `png({ palette: true })` option,
-which would pull in libimagequant (GPL). All code paths used by FitImage are
-therefore under permissive (BSD/zlib/MIT/Apache/LGPL) terms compatible with the
-MIT license of this project.
+GIF output requires palette quantization. sharp's prebuilt binaries bundle the
+BSD-2-Clause fork of libimagequant (https://github.com/lovell/libimagequant,
+version 2.x), NOT the GPL-licensed upstream — so GIF output stays on a
+permissive code path. PNG re-encoding keeps `palette: false` (truecolour zlib).
+FitImage does not use any GPL-licensed codec. All code paths used by FitImage
+are therefore under permissive (BSD/zlib/MIT/Apache/LGPL) terms compatible with
+the MIT license of this project.
+
+(If you replace sharp's bundled libvips with a system build linked against the
+GPL-licensed upstream libimagequant, GIF quantization would use that instead;
+the statement above describes the default prebuilt install.)
 
 Because these libraries are consumed as npm dependencies (downloaded by the end
 user at install time) and are not redistributed within this repository, no

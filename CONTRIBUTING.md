@@ -34,10 +34,18 @@ npm test
 ## Project layout
 
 ```
-bin/cli.js     # CLI entry (argument parsing, output)
-src/index.js   # core library (collect/compress/summarize)
-test/          # node:test suite
+bin/cli.js          # CLI entry (argument parsing; routes to wizard or run())
+src/index.js        # core library (collect/compress/convert/summarize)
+src/interactive.js  # interactive wizard (readline) + config persistence
+src/report.js       # shared output formatting
+test/               # node:test suite
+docs/MAINTAINING.md # architecture, invariants, how to extend, release & licensing
 ```
+
+For anything beyond a small change — adding an output format, touching the
+file-deletion logic, or writing wizard tests — read
+[`docs/MAINTAINING.md`](./docs/MAINTAINING.md) first. It documents the invariants
+that keep `format: null` backwards-compatible and the readline test harness gotcha.
 
 ## Code of Conduct
 

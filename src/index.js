@@ -11,14 +11,34 @@ import sharp from 'sharp';
 export const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
 export const DEFAULTS = {
-  quality: 75,       // JPEG quality (1-100)
+  quality: 75,       // JPEG / WebP quality (1-100)
   recursive: true,   // descend into subdirectories
   out: null,         // null = in place (overwrite / convert beside source)
   dryRun: false,     // compute only, write nothing
   keepOriginal: false, // keep source files when the format changes (e.g. keep .webp)
-  pngToJpg: false,   // also convert .png -> .jpg
+  pngToJpg: false,   // also convert .png -> .jpg (legacy adaptive path only)
   concurrency: 4,
+  format: null,      // null = legacy adaptive behaviour; else 'jpg'|'jpeg'|'png'|'webp'|'gif'
+  affix: null,       // null = overwrite in place; else { position:'prefix'|'suffix', text }
 };
+
+// Map a chosen output format to its file extension. Returns null for unknown.
+export function extForFormat(format) {
+  switch (String(format || '').toLowerCase()) {
+    case 'jpg':
+    case 'jpeg': return '.jpg';
+    case 'png':  return '.png';
+    case 'webp': return '.webp';
+    case 'gif':  return '.gif';
+    default:     return null;
+  }
+}
+
+// Add a prefix/suffix string to a filename stem (the basename without extension).
+export function applyAffix(stem, affix) {
+  if (!affix || !affix.text) return stem;
+  return affix.position === 'prefix' ? affix.text + stem : stem + affix.text;
+}
 
 /** Recursively collect supported image files under `dir`. */
 export async function collectImages(dir, recursive = true) {
@@ -51,9 +71,33 @@ async function encodeJpeg(input, quality) {
   }
 }
 
-// Re-encode PNG losslessly-ish (zlib). palette:false => never pulls in libimagequant (GPL).
+// Re-encode PNG losslessly-ish (zlib). palette:false keeps the truecolour path.
 async function encodePng(input) {
   return await sharp(input).png({ compressionLevel: 9, palette: false }).toBuffer();
+}
+
+// Encode to WebP via libwebp (BSD). quality applies to lossy WebP.
+async function encodeWebp(input, quality) {
+  return await sharp(input).webp({ quality }).toBuffer();
+}
+
+// Encode to GIF via cgif (MIT) + sharp's bundled libimagequant fork (BSD-2-Clause).
+// Note: GIF is a 256-colour palette format, so photographic output can be LARGER
+// than the source — the caller surfaces the size delta either way.
+async function encodeGif(input) {
+  return await sharp(input).gif().toBuffer();
+}
+
+// Encode `input` to an explicit output format. Returns { buffer, outExt }.
+async function encodeAs(format, input, quality) {
+  const outExt = extForFormat(format);
+  switch (outExt) {
+    case '.jpg':  return { buffer: await encodeJpeg(input, quality), outExt };
+    case '.png':  return { buffer: await encodePng(input), outExt };
+    case '.webp': return { buffer: await encodeWebp(input, quality), outExt };
+    case '.gif':  return { buffer: await encodeGif(input), outExt };
+    default: throw new Error(`unsupported output format: ${format}`);
+  }
 }
 
 /**
@@ -66,40 +110,46 @@ export async function processFile(file, opts, baseDir) {
   const input = await fs.readFile(file);
 
   let outBuffer;
-  let outExt = ext;
-  let convertsFormat = false;
+  let outExt;
 
-  if (ext === '.webp') {
+  if (opts.format) {
+    // Explicit output format: encode every input to the chosen format.
+    const enc = await encodeAs(opts.format, input, opts.quality);
+    outBuffer = enc.buffer;
+    outExt = enc.outExt;
+  } else if (ext === '.webp') {
     outBuffer = await encodeJpeg(input, opts.quality);
     outExt = '.jpg';
-    convertsFormat = true;
   } else if (ext === '.png') {
     if (opts.pngToJpg) {
       outBuffer = await encodeJpeg(input, opts.quality);
       outExt = '.jpg';
-      convertsFormat = true;
     } else {
       outBuffer = await encodePng(input);
+      outExt = '.png';
     }
   } else {
-    // .jpg / .jpeg
+    // .jpg / .jpeg — re-encode, keep the original extension
     outBuffer = await encodeJpeg(input, opts.quality);
+    outExt = ext;
   }
+  const convertsFormat = outExt !== ext;
 
-  // Destination path
+  // Destination path. An affix renames only the basename (subdirs are preserved);
+  // an affix or --out always writes beside/under a new name and never deletes the source.
+  const stem = applyAffix(path.basename(file, ext), opts.affix);
   let destPath;
   if (opts.out) {
-    const rel = path.relative(baseDir, file);
-    const relNoExt = rel.slice(0, rel.length - ext.length);
-    destPath = path.join(opts.out, relNoExt + outExt);
+    const relDir = path.dirname(path.relative(baseDir, file));
+    destPath = path.join(opts.out, relDir, stem + outExt);
   } else {
-    destPath = path.join(path.dirname(file), path.basename(file, ext) + outExt);
+    destPath = path.join(path.dirname(file), stem + outExt);
   }
 
   const newBytes = outBuffer.length;
-  // For same-format in-place re-compression, only write if it actually shrinks.
-  // Format conversions (webp->jpg, png->jpg) and --out always write.
-  const willWrite = opts.out ? true : (convertsFormat ? true : newBytes < origBytes);
+  // Same-format in-place re-compression only writes if it actually shrinks.
+  // Format conversions, --out and renamed (affix) outputs always write.
+  const willWrite = (opts.out || opts.affix) ? true : (convertsFormat ? true : newBytes < origBytes);
 
   const result = {
     file,
@@ -118,7 +168,8 @@ export async function processFile(file, opts, baseDir) {
   result.wrote = true;
 
   // In-place format change: optionally remove the now-replaced source file.
-  if (!opts.out && convertsFormat && !opts.keepOriginal
+  // Skipped when writing elsewhere (--out) or under a new name (affix): both keep the source.
+  if (!opts.out && !opts.affix && convertsFormat && !opts.keepOriginal
       && path.resolve(destPath) !== path.resolve(file)) {
     await fs.rm(file);
   }
