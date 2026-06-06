@@ -135,6 +135,18 @@ Done.
 
 12 image(s) | written: 12 | skipped: 0 | errors: 0
 24.3 MB -> 6.1 MB  (saved 18.2 MB, 74.9%)
+
+One-Shot Command — turn this run into a single reusable command?
+  1) Yes — show me the command                ← はい・コマンドを表示
+  2) No thanks                                 （いいえ）
+> 1
+
+One-Shot Command — run this in your terminal to repeat exactly this operation:
+
+  fitimage "/Users/you/Pictures/旅行" --format webp --suffix _small
+
+Next time, just paste this command instead of answering the questions —
+it reproduces this run in a single step.
 ```
 
 この例では、元の `IMG_0001.jpg` …はそのまま残り、軽くなったコピー
@@ -142,6 +154,25 @@ Done.
 
 > 🔁 **次回からは**、前回のフォルダが自動で提示されます。**Enter** で再利用、別の
 > パスを入力すれば変更できます。
+
+##### ワンショット・コマンド（同じ操作をすぐ繰り返す）
+
+処理が終わると、最後に **「One-Shot Command（ワンショット・コマンド）を作りますか？」**
+と聞かれます。**「Yes」** を選ぶと、**今回とまったく同じ操作を 1 行で実行できるコマンド**
+が表示されます。例：
+
+```bash
+fitimage "/Users/you/Pictures/旅行" --format webp --suffix _small
+```
+
+次回からは、質問に答える代わりに **このコマンドをターミナルに貼り付けて Enter** する
+だけ。同じフォルダ・同じ形式・同じ保存方法で、**メニューなしの最短ステップ**で実行できます。
+
+- フォルダのパスに**スペースや日本語**が含まれる場合は、自動で `"…"` で囲まれます
+  （そのままコピペでOK）。
+- インストールせず `npx` で使っている方は、先頭に `npx @ecgear/fitimage` を付けてください。
+- 各オプションの意味は、下の [English](#english) セクションの
+  [Options](#options) 表にまとめています。
 
 ##### フォルダのパスはどう入力するの？
 
@@ -340,6 +371,18 @@ Done.
 
 12 image(s) | written: 12 | skipped: 0 | errors: 0
 24.3 MB -> 6.1 MB  (saved 18.2 MB, 74.9%)
+
+One-Shot Command — turn this run into a single reusable command?
+  1) Yes — show me the command
+  2) No thanks
+> 1
+
+One-Shot Command — run this in your terminal to repeat exactly this operation:
+
+  fitimage /Users/you/Pictures/trip --format webp --suffix _small
+
+Next time, just paste this command instead of answering the questions —
+it reproduces this run in a single step.
 ```
 
 In this example, the originals (`IMG_0001.jpg` …) are kept, and smaller copies
@@ -347,6 +390,27 @@ named `IMG_0001_small.webp` … are created next to them.
 
 > 🔁 **Next time** you run `fitimage`, it remembers the last folder and offers it
 > automatically — just press **Enter** to reuse it, or type a different path.
+
+##### One-Shot Command — repeat a run in one step
+
+When a run finishes, FitImage asks **"One-Shot Command — turn this run into a
+single reusable command?"** Choose **Yes** and it prints the exact `fitimage`
+command that reproduces what you just did, for example:
+
+```bash
+fitimage /Users/you/Pictures/trip --format webp --suffix _small
+```
+
+Next time, instead of answering the questions, just **paste that command into your
+terminal and press Enter** — same folder, same format, same save mode, in a single
+step with no menus.
+
+- Folder paths that contain **spaces or non-ASCII characters** are automatically
+  wrapped in `"…"` so you can copy-paste them as-is (works in bash/zsh and Windows
+  PowerShell/cmd).
+- If you run FitImage with `npx` instead of installing it, prefix the command with
+  `npx @ecgear/fitimage`.
+- See the [Options](#options) table below for what each flag means.
 
 ##### How do I type the folder path?
 

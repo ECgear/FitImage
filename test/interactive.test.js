@@ -7,7 +7,7 @@ import { PassThrough, Writable } from 'node:stream';
 import sharp from 'sharp';
 
 import { run, extForFormat, applyAffix } from '../src/index.js';
-import { runInteractive, buildOptions, loadConfig } from '../src/interactive.js';
+import { runInteractive, buildOptions, buildOneShotCommand, loadConfig } from '../src/interactive.js';
 
 const W = 256, H = 256, C = 3;
 
@@ -85,6 +85,45 @@ test('buildOptions produces run() options with quality 75', () => {
   });
 });
 
+test('buildOneShotCommand mirrors the wizard choices as fitimage flags', () => {
+  // Overwrite in place (no affix) — just the folder + format.
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'jpg' }),
+    'fitimage /photos --format jpg',
+  );
+  // Save-as-new with a suffix.
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'webp', affix: { position: 'suffix', text: '_min' } }),
+    'fitimage /photos --format webp --suffix _min',
+  );
+  // Save-as-new with a prefix.
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'jpg', affix: { position: 'prefix', text: 'min_' } }),
+    'fitimage /photos --format jpg --prefix min_',
+  );
+  // The default quality (75) is omitted; a non-default quality is included.
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'jpg', quality: 75 }),
+    'fitimage /photos --format jpg',
+  );
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'jpg', quality: 60 }),
+    'fitimage /photos --format jpg --quality 60',
+  );
+});
+
+test('buildOneShotCommand double-quotes paths that contain spaces', () => {
+  assert.equal(
+    buildOneShotCommand({ folder: '/Users/you/My Photos', format: 'jpg' }),
+    'fitimage "/Users/you/My Photos" --format jpg',
+  );
+  // A bare Windows-style path needs no quoting.
+  assert.equal(
+    buildOneShotCommand({ folder: 'C:\\Users\\me\\pics', format: 'webp' }),
+    'fitimage C:\\Users\\me\\pics --format webp',
+  );
+});
+
 // ---- core: explicit output format ------------------------------------------
 
 test('run with format=webp converts and removes the source by default', async () => {
@@ -140,6 +179,7 @@ test('wizard: rename + webp + run writes a renamed file and remembers the folder
     '_min',  // text
     '2',     // format: webp
     '1',     // proceed: run now
+    '1',     // one-shot command: yes, show it
   ], { cwd: dir, configPath });
 
   assert.ok(result, 'wizard returned a result');
@@ -150,6 +190,15 @@ test('wizard: rename + webp + run writes a renamed file and remembers the folder
   const config = await loadConfig(configPath);
   assert.equal(config.lastFolder, path.resolve(dir), 'folder remembered');
   assert.match(text, /These 1 image\(s\) will be processed/);
+
+  // The wizard offers the exact command that reproduces this run.
+  assert.match(text, /One-Shot Command/);
+  const expected = buildOneShotCommand({
+    folder: path.resolve(dir),
+    format: 'webp',
+    affix: { position: 'suffix', text: '_min' },
+  });
+  assert.ok(text.includes(expected), `printed one-shot command "${expected}"`);
 });
 
 test('wizard: dry-run preview then decline writes nothing', async () => {

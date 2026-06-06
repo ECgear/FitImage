@@ -50,6 +50,43 @@ export function buildOptions({ format = null, affix = null, quality = DEFAULTS.q
   return { quality, recursive: true, format, affix };
 }
 
+/**
+ * Quote a single command-line argument so it can be pasted safely into a
+ * terminal on macOS/Linux (bash/zsh) AND Windows (cmd/PowerShell).
+ *
+ * Bare values that only contain path-safe characters are returned as-is (this
+ * keeps Windows paths like `C:\Users\me` readable). Anything else — most
+ * importantly a space — is wrapped in double quotes, which every common shell
+ * understands. Backslashes are intentionally NOT escaped (that would corrupt
+ * Windows paths); affix text already forbids `"` and other illegal characters
+ * (see ILLEGAL_FILENAME), and `"` in a folder name is illegal on Windows and
+ * pathological on POSIX, so it is the one unhandled edge case.
+ */
+export function shellQuote(value) {
+  const s = String(value);
+  if (s !== '' && /^[A-Za-z0-9._\-~:/\\]+$/.test(s)) return s;
+  return `"${s}"`;
+}
+
+/**
+ * Build the one-shot `fitimage` command line that reproduces a wizard run.
+ * Mirrors the flags accepted by bin/cli.js. Returns a single string.
+ *
+ * - folder  -> the positional <path> (quoted when needed)
+ * - format  -> --format <fmt>            (the wizard always picks one)
+ * - affix   -> --prefix/--suffix <text>  (omitted = overwrite in place)
+ * - quality -> --quality <n>             (omitted when equal to the default)
+ */
+export function buildOneShotCommand({ folder, format = null, affix = null, quality = DEFAULTS.quality } = {}) {
+  const parts = ['fitimage', shellQuote(folder)];
+  if (format) parts.push('--format', format);
+  if (affix && affix.text) {
+    parts.push(affix.position === 'prefix' ? '--prefix' : '--suffix', shellQuote(affix.text));
+  }
+  if (quality != null && quality !== DEFAULTS.quality) parts.push('--quality', String(quality));
+  return parts.join(' ');
+}
+
 function expandHome(p) {
   if (p === '~' || p.startsWith('~/') || p.startsWith('~\\')) {
     return path.join(os.homedir(), p.slice(1));
@@ -104,6 +141,31 @@ async function askAffixText(rl, output) {
 
 function emit(output, out, opts) {
   for (const line of reportLines(out, opts)) output.write(line.text + '\n');
+}
+
+/**
+ * After a real run, offer to print the equivalent `fitimage` command so the
+ * user can repeat exactly this operation next time without the questions.
+ */
+async function offerOneShotCommand(rl, output, { folder, options }) {
+  const pick = await choose(rl, output, 'One-Shot Command — turn this run into a single reusable command?', [
+    'Yes — show me the command',
+    'No thanks',
+  ]);
+  if (pick !== 0) return;
+
+  const cmd = buildOneShotCommand({
+    folder,
+    format: options.format,
+    affix: options.affix,
+    quality: options.quality,
+  });
+
+  output.write('\nOne-Shot Command — run this in your terminal to repeat exactly this operation:\n\n');
+  output.write(`  ${cmd}\n\n`);
+  output.write('Next time, just paste this command instead of answering the questions —\n');
+  output.write('it reproduces this run in a single step.\n');
+  output.write('(Using npx? Prefix it: npx @ecgear/fitimage … )\n');
 }
 
 // ---- wizard ----------------------------------------------------------------
@@ -200,6 +262,9 @@ export async function runInteractive({
     const result = await run(folder, options);
     output.write('\nDone.\n');
     emit(output, result, { verbose: false });
+
+    // 6. Offer to capture this run as a single reusable command.
+    await offerOneShotCommand(rl, output, { folder, options });
     return result;
   } finally {
     rl.close();

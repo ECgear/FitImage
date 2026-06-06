@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-07
+
+### Added
+- **One-Shot Command**: after a run completes, the interactive wizard offers to
+  print the equivalent `fitimage` command line (with the folder, `--format`, and
+  `--prefix`/`--suffix` you chose) so you can paste it next time and repeat the
+  same operation in a single step — no questions. New exported helper
+  `buildOneShotCommand` (paths are quoted to work in bash/zsh and Windows shells).
+
 ## [0.2.0] - 2026-06-06
 
 ### Added
@@ -38,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Programmatic API (`run`, `collectImages`, `processFile`, `summarize`).
 - Cross-platform CI (Ubuntu/macOS/Windows × Node 18/20/22).
 
-[Unreleased]: https://github.com/ECgear/FitImage/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ECgear/FitImage/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ECgear/FitImage/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ECgear/FitImage/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ECgear/FitImage/releases/tag/v0.1.0

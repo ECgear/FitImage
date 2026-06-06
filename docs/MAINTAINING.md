@@ -100,6 +100,16 @@ the only path that uses palette quantization.
   the folder is saved only after the user commits (not on Cancel).
 - **The CLI launches the wizard only on a TTY.** No path + non-TTY prints a guide
   and exits 1 (so piped/CI use never hangs waiting for input).
+- **One-Shot Command (final, conditional step).** After a run *actually executes*
+  (Run now, or dry-run preview → yes), the wizard offers to print the equivalent
+  `fitimage` command via `offerOneShotCommand`. It is **not** shown on Cancel or a
+  declined dry-run (both return `null` before the run), so those `driveWizard`
+  scripts need no extra answer. The command is built by the exported pure helper
+  `buildOneShotCommand({ folder, format, affix, quality })`, which mirrors the
+  flags in `bin/cli.js` (omits `--quality` when it equals `DEFAULTS.quality`).
+  `shellQuote` makes a value paste-safe in bash/zsh **and** Windows cmd/PowerShell
+  (double-quote when needed; never escape backslashes — that would break Windows
+  paths). Keep `buildOneShotCommand` in sync with `bin/cli.js` if flags change.
 
 ---
 
@@ -152,6 +162,8 @@ Example: add AVIF.
 To add a new **wizard question**: add a `choose`/`question` step, thread the
 answer into `buildOptions`, update the plan summary, and **add exactly one input
 line** to every `driveWizard([...])` script in the tests (or they will hang).
+Note the final One-Shot Command prompt is **conditional** — it runs only on the
+executed-run path, so only scripts that reach a real run need its answer line.
 
 ---
 
