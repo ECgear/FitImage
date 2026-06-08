@@ -26,10 +26,13 @@ function fakeIO(seed = {}) {
     mkdirp: async (p) => { calls.mkdirp.push(p); },
     rm: async (p) => { calls.rm.push(p); },
     run: async (f, a) => { calls.run.push([f, a]); return { stdout: (seed.run && seed.run(f, a)) || '' }; },
-    readdir: async (p) => { calls.readdir.push(p); return (seed.dirs && seed.dirs[p]) || []; },
+    // Look up seeded paths with forward slashes so seeds written with '/' match
+    // even on Windows, where path.join() produces '\\'.
+    readdir: async (p) => { calls.readdir.push(p); return (seed.dirs && seed.dirs[p.replaceAll('\\', '/')]) || []; },
     readFile: async (p) => {
       calls.readFile.push(p);
-      if (seed.files && p in seed.files) return seed.files[p];
+      const key = p.replaceAll('\\', '/');
+      if (seed.files && key in seed.files) return seed.files[key];
       throw new Error(`ENOENT ${p}`);
     },
   };
@@ -202,8 +205,9 @@ test('installCommandMenu installs a macOS Quick Action via the injected io', asy
   assert.equal(result.installed, true);
   assert.equal(result.label, 'My Label');
 
-  const written = io.calls.writeFile.map(([p]) => p);
   // The bundle is named after the label (prefixed) so multiple can coexist.
+  // Normalise separators so the assertion holds on Windows (path.join → '\\').
+  const written = io.calls.writeFile.map(([p]) => p.replaceAll('\\', '/'));
   assert.ok(written.some((p) => p.endsWith('FitImage - My Label.workflow/Contents/Info.plist')));
   assert.ok(written.some((p) => p.endsWith('FitImage - My Label.workflow/Contents/document.wflow')));
   assert.match(text, /Quick Actions/);
@@ -255,7 +259,7 @@ test('installCommandMenu lists entries and removes the chosen macOS Quick Action
   const { result, text } = await driveMenu(['2', '2'], { platform: 'darwin', servicesDir: dir, options: {}, io });
   assert.equal(result.removed, true);
   assert.equal(result.count, 1);
-  assert.deepEqual(io.calls.rm, [`${dir}/FitImage - webp.workflow`]);
+  assert.deepEqual(io.calls.rm.map((p) => p.replaceAll('\\', '/')), [`${dir}/FitImage - webp.workflow`]);
   assert.match(text, /Removed "webp"/);
 });
 
