@@ -174,10 +174,10 @@ test('wizard: rename + webp + run writes a renamed file and remembers the folder
 
   const { result, text } = await driveWizard([
     dir,     // target folder (none remembered)
+    '2',     // format: webp
     '2',     // save mode: save as new name
     '2',     // position: suffix
     '_min',  // text
-    '2',     // format: webp
     '1',     // proceed: run now
     '1',     // one-shot command: yes, show it
   ], { cwd: dir, configPath });
@@ -208,8 +208,8 @@ test('wizard: dry-run preview then decline writes nothing', async () => {
 
   const { result, text } = await driveWizard([
     dir,   // target folder
-    '1',   // save mode: overwrite
     '3',   // format: gif
+    '1',   // save mode: overwrite
     '2',   // proceed: dry-run preview first
     'n',   // run for real? -> no
   ], { cwd: dir, configPath });

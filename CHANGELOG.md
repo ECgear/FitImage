@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Interactive wizard order**: the wizard now asks for the output format *before*
+  the save mode (folder → output format → save mode → text position). The
+  "Where should the text be added?" question is still shown only for
+  "Save as a new name"; choosing "Overwrite originals" skips it.
+
 ## [0.3.2] - 2026-06-07
 
 ### Added

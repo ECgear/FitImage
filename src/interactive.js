@@ -199,7 +199,17 @@ export async function runInteractive({
     if (files.length > LIST_LIMIT) output.write(`  ... and ${files.length - LIST_LIMIT} more\n`);
     output.write(`\nThese ${files.length} image(s) will be processed.\n`);
 
-    // 3. Overwrite vs. save under a new name.
+    // 3. Output format.
+    const fmtIdx = await choose(rl, output, 'Output format (size-reduced):', [
+      'JPG  (.jpg)',
+      'WebP (.webp)',
+      'GIF  (.gif)  — 256-colour palette; photos may end up larger',
+      'PNG  (.png)',
+    ]);
+    const format = FORMATS[fmtIdx];
+
+    // 4. Overwrite vs. save under a new name. The text-position question only
+    // applies to "save as a new name"; overwrite leaves the filename unchanged.
     const saveMode = await choose(rl, output, 'Save mode:', [
       'Overwrite originals (in place)',
       'Save as a new name (keep originals)',
@@ -213,15 +223,6 @@ export async function runInteractive({
       const text = await askAffixText(rl, output);
       affix = { position: pos === 0 ? 'prefix' : 'suffix', text };
     }
-
-    // 4. Output format.
-    const fmtIdx = await choose(rl, output, 'Output format (size-reduced):', [
-      'JPG  (.jpg)',
-      'WebP (.webp)',
-      'GIF  (.gif)  — 256-colour palette; photos may end up larger',
-      'PNG  (.png)',
-    ]);
-    const format = FORMATS[fmtIdx];
 
     const options = buildOptions({ format, affix });
 

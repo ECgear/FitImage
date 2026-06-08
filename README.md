@@ -102,6 +102,13 @@ Target folder [/Users/you]: /Users/you/Pictures/旅行
 
 These 12 image(s) will be processed.
 
+Output format (size-reduced):               ← 出力形式
+  1) JPG  (.jpg)
+  2) WebP (.webp)
+  3) GIF  (.gif)  — 写真は逆に大きくなることがあります
+  4) PNG  (.png)
+> 2
+
 Save mode:                                  ← 保存方法
   1) Overwrite originals (in place)          （上書き）
   2) Save as a new name (keep originals)     （別名で保存・元は残す）
@@ -112,13 +119,6 @@ Where should the text be added?             ← 付け足す位置
   2) Suffix — at the end of the filename         （末尾）
 > 2
 Text to add: _small                          ← 付け足す文字
-
-Output format (size-reduced):               ← 出力形式
-  1) JPG  (.jpg)
-  2) WebP (.webp)
-  3) GIF  (.gif)  — 写真は逆に大きくなることがあります
-  4) PNG  (.png)
-> 2
 
 Plan:                                        ← 実行内容の確認
   Folder : /Users/you/Pictures/旅行
@@ -357,6 +357,13 @@ Target folder [/Users/you]: /Users/you/Pictures/trip
 
 These 12 image(s) will be processed.
 
+Output format (size-reduced):
+  1) JPG  (.jpg)
+  2) WebP (.webp)
+  3) GIF  (.gif)  — 256-colour palette; photos may end up larger
+  4) PNG  (.png)
+> 2
+
 Save mode:
   1) Overwrite originals (in place)
   2) Save as a new name (keep originals)
@@ -367,13 +374,6 @@ Where should the text be added?
   2) Suffix — at the end of the filename
 > 2
 Text to add: _small
-
-Output format (size-reduced):
-  1) JPG  (.jpg)
-  2) WebP (.webp)
-  3) GIF  (.gif)  — 256-colour palette; photos may end up larger
-  4) PNG  (.png)
-> 2
 
 Plan:
   Folder : /Users/you/Pictures/trip
