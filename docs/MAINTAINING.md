@@ -97,6 +97,15 @@ the only path that uses palette quantization.
   shown (per product decision: 2nd+ run skips only the folder *question*).
 - **Quality is fixed at 75** in the wizard by design. If you ever expose it, add a
   prompt — do not change `buildOptions`' default silently.
+- **Save-as-new can skip the text question.** In the `saveMode === 1` branch, when
+  every collected file shares one extension *and* the chosen format's extension
+  differs (`uniformExt && outExt !== uniformExt`), the new file already gets a
+  distinct name, so the wizard sets `affix = null, keepOriginal = true` and does
+  **not** ask "Where should the text be added?" / "Text to add". `keepOriginal`
+  flows through `buildOptions` into `run()` (so `processFile` writes the converted
+  copy and keeps the source), and `buildOneShotCommand` emits `--keep-original`
+  for this case. **Test impact**: a `driveWizard([...])` script for this path has
+  **two fewer** answer lines (no position, no text) than the renamed path — see §5.
 - **Safety gate**: the wizard always offers Run / Dry-run preview / Cancel, and
   the folder is saved only after the user commits (not on Cancel).
 - **The CLI launches the wizard only on a TTY.** No path + non-TTY prints a guide

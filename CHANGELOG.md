@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the save mode (folder → output format → save mode → text position). The
   "Where should the text be added?" question is still shown only for
   "Save as a new name"; choosing "Overwrite originals" skips it.
+- **Smarter "Save as a new name"**: when every image in the folder shares one
+  extension and you pick a *different* output format, the new file already gets a
+  distinct name (e.g. `photo.jpg` → `photo.webp`), so the wizard no longer asks
+  "Where should the text be added?" — it keeps the originals and writes the
+  converted copy beside them (equivalent to `--keep-original`). The text question
+  still appears when the output format matches the source extension or the folder
+  mixes extensions.
 
 ## [0.3.2] - 2026-06-07
 

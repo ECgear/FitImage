@@ -78,10 +78,14 @@ test('applyAffix adds prefix/suffix and is a no-op when null', () => {
 
 test('buildOptions produces run() options with quality 75', () => {
   assert.deepEqual(buildOptions({ format: 'webp' }), {
-    quality: 75, recursive: true, format: 'webp', affix: null,
+    quality: 75, recursive: true, format: 'webp', affix: null, keepOriginal: false,
   });
   assert.deepEqual(buildOptions({ format: 'jpg', affix: { position: 'suffix', text: '_x' } }), {
-    quality: 75, recursive: true, format: 'jpg', affix: { position: 'suffix', text: '_x' },
+    quality: 75, recursive: true, format: 'jpg', affix: { position: 'suffix', text: '_x' }, keepOriginal: false,
+  });
+  // Save-as-new with no rename (a new format already yields a distinct name).
+  assert.deepEqual(buildOptions({ format: 'webp', keepOriginal: true }), {
+    quality: 75, recursive: true, format: 'webp', affix: null, keepOriginal: true,
   });
 });
 
@@ -100,6 +104,11 @@ test('buildOneShotCommand mirrors the wizard choices as fitimage flags', () => {
   assert.equal(
     buildOneShotCommand({ folder: '/photos', format: 'jpg', affix: { position: 'prefix', text: 'min_' } }),
     'fitimage /photos --format jpg --prefix min_',
+  );
+  // Save-as-new with no rename -> --keep-original (a new format yields a distinct name).
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'webp', keepOriginal: true }),
+    'fitimage /photos --format webp --keep-original',
   );
   // The default quality (75) is omitted; a non-default quality is included.
   assert.equal(
@@ -167,14 +176,16 @@ test('affix prefix keeps the original even across a format change', async () => 
 
 // ---- wizard end-to-end ------------------------------------------------------
 
-test('wizard: rename + webp + run writes a renamed file and remembers the folder', async () => {
+test('wizard: rename (same format) + run writes a renamed file and remembers the folder', async () => {
   const dir = await tmpdir();
   await writeJpeg(path.join(dir, 'a.jpg'));
   const configPath = path.join(await tmpdir(), 'config.json');
 
+  // Output jpg == the source extension, so the new file would collide with the
+  // original — the wizard therefore asks where to add text (prefix/suffix).
   const { result, text } = await driveWizard([
     dir,     // target folder (none remembered)
-    '2',     // format: webp
+    '1',     // format: jpg (same extension as the source)
     '2',     // save mode: save as new name
     '2',     // position: suffix
     '_min',  // text
@@ -184,7 +195,8 @@ test('wizard: rename + webp + run writes a renamed file and remembers the folder
 
   assert.ok(result, 'wizard returned a result');
   assert.equal(result.summary.errors, 0);
-  assert.ok(await exists(path.join(dir, 'a_min.webp')), 'a_min.webp created');
+  assert.match(text, /Where should the text be added\?/);
+  assert.ok(await exists(path.join(dir, 'a_min.jpg')), 'a_min.jpg created');
   assert.ok(await exists(path.join(dir, 'a.jpg')), 'original kept');
 
   const config = await loadConfig(configPath);
@@ -195,8 +207,39 @@ test('wizard: rename + webp + run writes a renamed file and remembers the folder
   assert.match(text, /One-Shot Command/);
   const expected = buildOneShotCommand({
     folder: path.resolve(dir),
-    format: 'webp',
+    format: 'jpg',
     affix: { position: 'suffix', text: '_min' },
+  });
+  assert.ok(text.includes(expected), `printed one-shot command "${expected}"`);
+});
+
+test('wizard: save-as-new with a new format skips the text question and keeps the original', async () => {
+  const dir = await tmpdir();
+  await writeJpeg(path.join(dir, 'a.jpg'));
+  const configPath = path.join(await tmpdir(), 'config.json');
+
+  // Folder holds only .jpg; choosing webp + "save as a new name" produces a.webp,
+  // a distinct name that coexists with a.jpg — so no prefix/suffix is needed.
+  const { result, text } = await driveWizard([
+    dir,   // target folder
+    '2',   // format: webp (different extension than the .jpg source)
+    '2',   // save mode: save as new name
+    '1',   // proceed: run now
+    '1',   // one-shot command: yes, show it
+  ], { cwd: dir, configPath });
+
+  assert.ok(result, 'wizard returned a result');
+  assert.equal(result.summary.errors, 0);
+  assert.doesNotMatch(text, /Where should the text be added\?/, 'text question skipped');
+  assert.match(text, /next to originals/, 'plan explains originals are kept by name');
+  assert.ok(await exists(path.join(dir, 'a.webp')), 'a.webp created (same name, new ext)');
+  assert.ok(await exists(path.join(dir, 'a.jpg')), 'original a.jpg kept');
+
+  // The one-shot command reproduces the keep-originals behaviour via --keep-original.
+  const expected = buildOneShotCommand({
+    folder: path.resolve(dir),
+    format: 'webp',
+    keepOriginal: true,
   });
   assert.ok(text.includes(expected), `printed one-shot command "${expected}"`);
 });

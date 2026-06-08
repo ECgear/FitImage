@@ -10,7 +10,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { run, collectImages, DEFAULTS } from './index.js';
+import { run, collectImages, extForFormat, DEFAULTS } from './index.js';
 import { reportLines } from './report.js';
 
 const FORMATS = ['jpg', 'webp', 'gif', 'png'];
@@ -46,8 +46,8 @@ export async function saveConfig(p, data) {
 // ---- pure helpers ----------------------------------------------------------
 
 /** Build a run() options object from the wizard's collected answers. */
-export function buildOptions({ format = null, affix = null, quality = DEFAULTS.quality } = {}) {
-  return { quality, recursive: true, format, affix };
+export function buildOptions({ format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
+  return { quality, recursive: true, format, affix, keepOriginal };
 }
 
 /**
@@ -72,16 +72,20 @@ export function shellQuote(value) {
  * Build the one-shot `fitimage` command line that reproduces a wizard run.
  * Mirrors the flags accepted by bin/cli.js. Returns a single string.
  *
- * - folder  -> the positional <path> (quoted when needed)
- * - format  -> --format <fmt>            (the wizard always picks one)
- * - affix   -> --prefix/--suffix <text>  (omitted = overwrite in place)
- * - quality -> --quality <n>             (omitted when equal to the default)
+ * - folder       -> the positional <path> (quoted when needed)
+ * - format       -> --format <fmt>            (the wizard always picks one)
+ * - affix        -> --prefix/--suffix <text>  (omitted = overwrite in place)
+ * - keepOriginal -> --keep-original           (save-as-new with no rename: a new
+ *                   extension already yields a distinct name, so the source is kept)
+ * - quality      -> --quality <n>             (omitted when equal to the default)
  */
-export function buildOneShotCommand({ folder, format = null, affix = null, quality = DEFAULTS.quality } = {}) {
+export function buildOneShotCommand({ folder, format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
   const parts = ['fitimage', shellQuote(folder)];
   if (format) parts.push('--format', format);
   if (affix && affix.text) {
     parts.push(affix.position === 'prefix' ? '--prefix' : '--suffix', shellQuote(affix.text));
+  } else if (keepOriginal) {
+    parts.push('--keep-original');
   }
   if (quality != null && quality !== DEFAULTS.quality) parts.push('--quality', String(quality));
   return parts.join(' ');
@@ -158,6 +162,7 @@ async function offerOneShotCommand(rl, output, { folder, options }) {
     folder,
     format: options.format,
     affix: options.affix,
+    keepOriginal: options.keepOriginal,
     quality: options.quality,
   });
 
@@ -215,21 +220,35 @@ export async function runInteractive({
       'Save as a new name (keep originals)',
     ]);
     let affix = null;
+    let keepOriginal = false;
     if (saveMode === 1) {
-      const pos = await choose(rl, output, 'Where should the text be added?', [
-        'Prefix — at the beginning of the filename',
-        'Suffix — at the end of the filename',
-      ]);
-      const text = await askAffixText(rl, output);
-      affix = { position: pos === 0 ? 'prefix' : 'suffix', text };
+      // When every source shares one extension AND the chosen format has a
+      // different extension, the new file already gets a distinct name (e.g.
+      // photo.jpg -> photo.webp), so it can sit beside the original without a
+      // rename. Skip the text question and just keep the originals.
+      const outExt = extForFormat(format);
+      const exts = new Set(files.map((f) => path.extname(f).toLowerCase()));
+      const uniformExt = exts.size === 1 ? [...exts][0] : null;
+      if (uniformExt && outExt && outExt !== uniformExt) {
+        keepOriginal = true;
+      } else {
+        const pos = await choose(rl, output, 'Where should the text be added?', [
+          'Prefix — at the beginning of the filename',
+          'Suffix — at the end of the filename',
+        ]);
+        const text = await askAffixText(rl, output);
+        affix = { position: pos === 0 ? 'prefix' : 'suffix', text };
+      }
     }
 
-    const options = buildOptions({ format, affix });
+    const options = buildOptions({ format, affix, keepOriginal });
 
     // 5. Plan summary + safety gate.
     const naming = affix
       ? `add ${affix.position} "${affix.text}" (originals kept)`
-      : 'overwrite in place (originals replaced)';
+      : keepOriginal
+        ? `save as .${format} next to originals (same name, originals kept)`
+        : 'overwrite in place (originals replaced)';
     output.write('\nPlan:\n');
     output.write(`  Folder : ${folder}\n`);
     output.write(`  Images : ${files.length}\n`);

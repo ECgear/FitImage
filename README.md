@@ -114,17 +114,11 @@ Save mode:                                  ← 保存方法
   2) Save as a new name (keep originals)     （別名で保存・元は残す）
 > 2
 
-Where should the text be added?             ← 付け足す位置
-  1) Prefix — at the beginning of the filename   （先頭）
-  2) Suffix — at the end of the filename         （末尾）
-> 2
-Text to add: _small                          ← 付け足す文字
-
 Plan:                                        ← 実行内容の確認
   Folder : /Users/you/Pictures/旅行
   Images : 12
   Output : .webp (quality 75)
-  Naming : add suffix "_small" (originals kept)
+  Naming : save as .webp next to originals (same name, originals kept)
 
 Proceed?                                     ← 実行しますか？
   1) Run now                                  （今すぐ実行）
@@ -144,14 +138,20 @@ One-Shot Command — turn this run into a single reusable command?
 
 One-Shot Command — run this in your terminal to repeat exactly this operation:
 
-  fitimage "/Users/you/Pictures/旅行" --format webp --suffix _small
+  fitimage "/Users/you/Pictures/旅行" --format webp --keep-original
 
 Next time, just paste this command instead of answering the questions —
 it reproduces this run in a single step.
 ```
 
-この例では、元の `IMG_0001.jpg` …はそのまま残り、軽くなったコピー
-`IMG_0001_small.webp` …が同じフォルダに作られます。
+この例では、フォルダの画像がすべて同じ拡張子（`.jpg`）で、出力に**別の形式**（`.webp`）を
+選んだので、ファイル名はそのままに `IMG_0001.webp` …が作られ、元の `IMG_0001.jpg` …は
+そのまま残ります（拡張子が違うので同名でも上書きされません）。このとき「付け足す文字」は
+不要なので**質問されません**。
+
+> 💡 **「付け足す位置（Prefix/Suffix）」を聞かれるのはどんな時？** … 出力に**同じ形式**を選んだ
+> 場合（例: `.jpg` を `.jpg` に圧縮）や、フォルダに**複数の拡張子が混在**している場合です。
+> このときは新ファイルが元と同名・同拡張子になり得るため、区別用の文字（先頭/末尾）を尋ねます。
 
 > 🔁 **次回からは**、前回のフォルダが自動で提示されます。**Enter** で再利用、別の
 > パスを入力すれば変更できます。
@@ -163,7 +163,7 @@ it reproduces this run in a single step.
 が表示されます。例：
 
 ```bash
-fitimage "/Users/you/Pictures/旅行" --format webp --suffix _small
+fitimage "/Users/you/Pictures/旅行" --format webp --keep-original
 ```
 
 次回からは、質問に答える代わりに **このコマンドをターミナルに貼り付けて Enter** する
@@ -190,7 +190,7 @@ fitimage "/Users/you/Pictures/旅行" --format webp --suffix _small
 
 | 選択 | どうなる | おすすめ |
 |---|---|---|
-| **別名で保存（Save as a new name）** | 元はそのまま。軽くしたコピーを隣に作る（指定した先頭/末尾の文字つき）。 | 👍 まずはこれが安全 |
+| **別名で保存（Save as a new name）** | 元はそのまま。軽くしたコピーを隣に作る。出力が別形式なら同名・別拡張子で保存（例 `.jpg`→ `IMG.webp`）、同じ形式なら区別用の文字（先頭/末尾）を付けて保存。 | 👍 まずはこれが安全 |
 | **上書き（Overwrite originals）** | 元ファイルを軽い版に置き換え。形式が変わる場合（例 `.png`→`.webp`）は元ファイルは削除。 | 元が不要なとき |
 
 さらに安心な仕組み：
@@ -369,17 +369,11 @@ Save mode:
   2) Save as a new name (keep originals)
 > 2
 
-Where should the text be added?
-  1) Prefix — at the beginning of the filename
-  2) Suffix — at the end of the filename
-> 2
-Text to add: _small
-
 Plan:
   Folder : /Users/you/Pictures/trip
   Images : 12
   Output : .webp (quality 75)
-  Naming : add suffix "_small" (originals kept)
+  Naming : save as .webp next to originals (same name, originals kept)
 
 Proceed?
   1) Run now
@@ -399,14 +393,21 @@ One-Shot Command — turn this run into a single reusable command?
 
 One-Shot Command — run this in your terminal to repeat exactly this operation:
 
-  fitimage /Users/you/Pictures/trip --format webp --suffix _small
+  fitimage /Users/you/Pictures/trip --format webp --keep-original
 
 Next time, just paste this command instead of answering the questions —
 it reproduces this run in a single step.
 ```
 
-In this example, the originals (`IMG_0001.jpg` …) are kept, and smaller copies
-named `IMG_0001_small.webp` … are created next to them.
+In this example, every image shares one extension (`.jpg`) and the output uses a
+**different** format (`.webp`), so `IMG_0001.webp` … are created with the **same
+names** and the originals (`IMG_0001.jpg` …) are kept next to them (a different
+extension can't overwrite them). No "text to add" is needed, so it isn't asked.
+
+> 💡 **When *is* "Where should the text be added?" asked?** When you pick the
+> **same** format as your files (e.g. `.jpg` → `.jpg`), or the folder mixes
+> extensions — there the new file could share the original's name and extension,
+> so FitImage asks for a distinguishing prefix/suffix.
 
 > 🔁 **Next time** you run `fitimage`, it remembers the last folder and offers it
 > automatically — just press **Enter** to reuse it, or type a different path.
@@ -418,7 +419,7 @@ single reusable command?"** Choose **Yes** and it prints the exact `fitimage`
 command that reproduces what you just did, for example:
 
 ```bash
-fitimage /Users/you/Pictures/trip --format webp --suffix _small
+fitimage /Users/you/Pictures/trip --format webp --keep-original
 ```
 
 Next time, instead of answering the questions, just **paste that command into your
@@ -447,7 +448,7 @@ Short answer: **only if you ask it to.** When FitImage asks **“Save mode”**:
 
 | You choose | What happens | Best for |
 |---|---|---|
-| **Save as a new name** | Your originals stay exactly as they are; smaller copies are created next to them (with the prefix/suffix you chose). | 👍 Most people — completely safe |
+| **Save as a new name** | Your originals stay exactly as they are; smaller copies are created next to them. With a different output format the copy keeps the same name and a new extension (e.g. `.jpg` → `IMG.webp`); with the same format it adds the prefix/suffix you choose. | 👍 Most people — completely safe |
 | **Overwrite originals** | The original files are replaced by the smaller versions. If the file type changes (e.g. `.png` → `.webp`), the old file is removed. | When you don't need the originals |
 
 Extra safety nets:
