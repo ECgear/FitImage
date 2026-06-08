@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-08
+
+### Added
+- **Right-click menu integration** (`--install-menu`): append `--install-menu` to
+  a one-shot command (e.g. `fitimage --format webp --suffix _min --install-menu`)
+  to open a small installer that adds that exact operation to your file manager's
+  right-click menu. Afterwards you can right-click any image **or folder** and run
+  it without opening a terminal — it runs quietly and shows a completion
+  notification (no terminal window).
+  - **Multiple entries, one per label (up to 10).** Re-run with a **new** label to
+    **add** another entry, or with an **existing** label to **update** it. The
+    label you type is exactly what appears in the right-click menu.
+  - **Remove from the same installer.** Choose *Remove* to delete a single entry
+    from a list, or remove them all at once.
+  - **macOS** — installs Automator Quick Actions in `~/Library/Services`
+    (right-click → Quick Actions). No admin rights needed.
+  - **Windows** — adds per-user `HKEY_CURRENT_USER` registry entries for image
+    files and folders, launched hidden via a small VBScript (no console window).
+    On Windows 11 they may appear under "Show more options". No admin rights needed.
+  - The installer is a **separate** flow — it is *not* part of the normal
+    interactive wizard, which only prints a one-line hint about it.
+  - No new dependencies (uses OS tools `osascript` / `reg` / `wscript`).
+
 ## [0.4.0] - 2026-06-08
 
 ### Changed
@@ -78,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Programmatic API (`run`, `collectImages`, `processFile`, `summarize`).
 - Cross-platform CI (Ubuntu/macOS/Windows × Node 18/20/22).
 
-[Unreleased]: https://github.com/ECgear/FitImage/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ECgear/FitImage/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/ECgear/FitImage/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ECgear/FitImage/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/ECgear/FitImage/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/ECgear/FitImage/compare/v0.3.0...v0.3.1

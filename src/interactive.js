@@ -69,18 +69,20 @@ export function shellQuote(value) {
 }
 
 /**
- * Build the one-shot `fitimage` command line that reproduces a wizard run.
- * Mirrors the flags accepted by bin/cli.js. Returns a single string.
+ * Build just the option flags (no positional <path>) that reproduce a wizard
+ * run, mirroring bin/cli.js. Returns an array of already-quoted tokens.
  *
- * - folder       -> the positional <path> (quoted when needed)
  * - format       -> --format <fmt>            (the wizard always picks one)
  * - affix        -> --prefix/--suffix <text>  (omitted = overwrite in place)
  * - keepOriginal -> --keep-original           (save-as-new with no rename: a new
  *                   extension already yields a distinct name, so the source is kept)
  * - quality      -> --quality <n>             (omitted when equal to the default)
+ *
+ * Shared by buildOneShotCommand (here) and the right-click menu installer
+ * (src/menu.js), which bakes these same flags into a Finder/Explorer entry.
  */
-export function buildOneShotCommand({ folder, format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
-  const parts = ['fitimage', shellQuote(folder)];
+export function oneShotFlags({ format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
+  const parts = [];
   if (format) parts.push('--format', format);
   if (affix && affix.text) {
     parts.push(affix.position === 'prefix' ? '--prefix' : '--suffix', shellQuote(affix.text));
@@ -88,7 +90,18 @@ export function buildOneShotCommand({ folder, format = null, affix = null, quali
     parts.push('--keep-original');
   }
   if (quality != null && quality !== DEFAULTS.quality) parts.push('--quality', String(quality));
-  return parts.join(' ');
+  return parts;
+}
+
+/**
+ * Build the one-shot `fitimage` command line that reproduces a wizard run.
+ * Mirrors the flags accepted by bin/cli.js. Returns a single string.
+ *
+ * - folder       -> the positional <path> (quoted when needed)
+ * - (see oneShotFlags for the option flags)
+ */
+export function buildOneShotCommand({ folder, format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
+  return ['fitimage', shellQuote(folder), ...oneShotFlags({ format, affix, quality, keepOriginal })].join(' ');
 }
 
 function expandHome(p) {
@@ -104,7 +117,7 @@ async function isDir(p) {
 
 // ---- prompt primitives -----------------------------------------------------
 
-async function choose(rl, output, title, labels) {
+export async function choose(rl, output, title, labels) {
   for (;;) {
     output.write(`\n${title}\n`);
     labels.forEach((label, i) => output.write(`  ${i + 1}) ${label}\n`));
@@ -171,6 +184,8 @@ async function offerOneShotCommand(rl, output, { folder, options }) {
   output.write('Next time, just paste this command instead of answering the questions —\n');
   output.write('it reproduces this run in a single step.\n');
   output.write('(Using npx? Prefix it: npx @ecgear/fitimage … )\n');
+  output.write('\nTip: append  --install-menu  to that command to add it to your right-click menu\n');
+  output.write('     (Finder Quick Action on macOS, Explorer menu on Windows).\n');
 }
 
 // ---- wizard ----------------------------------------------------------------

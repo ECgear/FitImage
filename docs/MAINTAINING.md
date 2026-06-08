@@ -25,19 +25,25 @@ selling point.
 
 ```
 bin/cli.js        Argument parsing (commander). Routes to the wizard (no path / -i,
-                  TTY required) or to run(). Maps flags -> run() options. Prints via report.js.
+                  TTY required), to the menu installer (--install-menu), or to run().
+                  Maps flags -> run() options. Prints via report.js.
 src/index.js      Core engine + programmatic API. The only place that touches sharp/fs.
 src/interactive.js  The readline wizard. Streams are injectable for testing. Owns config persistence.
+src/menu.js       Right-click menu integration (--install-menu): pure builders for the
+                  macOS Quick Action bundle / Windows registry plan, an injectable I/O
+                  layer, and the installCommandMenu() installer prompt.
 src/report.js     Pure output formatting shared by the CLI and the wizard.
-test/             node:test. compress.test.js = legacy/core; interactive.test.js = new surface.
+test/             node:test. compress.test.js = legacy/core; interactive.test.js = wizard;
+                  menu.test.js = right-click menu builders + installer.
 scripts/preflight.mjs  Pre-publish safety gate (secrets / dangerous names / private-dir leak / GPL deps).
 .githooks/        pre-commit (preflight --staged) and pre-push (full preflight). Enabled via core.hooksPath.
 ```
 
-Dependency direction: `bin/cli.js → {index, interactive, report}`,
-`interactive.js → {index, report}`, `index.js → sharp`. **Nothing imports
-`bin/cli.js`** (it runs `program.parseAsync` on import — importing it would
-execute the CLI). That is why shared formatting lives in `report.js`, not in `bin/`.
+Dependency direction: `bin/cli.js → {index, interactive, menu, report}`,
+`interactive.js → {index, report}`, `menu.js → interactive` (reuses `oneShotFlags`
+and `choose`), `index.js → sharp`. **Nothing imports `bin/cli.js`** (it runs
+`program.parseAsync` on import — importing it would execute the CLI). That is why
+shared formatting lives in `report.js`, not in `bin/`.
 
 ---
 
@@ -123,14 +129,50 @@ the only path that uses palette quantization.
 
 ---
 
+## 4b. Right-click menu (`src/menu.js`)
+
+Reached only via `fitimage --install-menu` (routed in `bin/cli.js` before the
+wizard/run branches). It turns a one-shot command into a native context-menu
+entry. Design notes:
+
+- **Pure builders, injectable I/O.** `buildMacQuickAction` / `buildWindowsPlan`
+  produce strings only; the `io` object (`realIO`, or a fake in tests) performs
+  all `writeFile`/`mkdirp`/`rm`/`run`/`readdir`/`readFile`. Tests never touch the
+  real `~/Library/Services` or registry.
+- **One entry per label.** The label is the user-visible menu name. Identity is
+  derived from it: `macBundleName(label)` → `FitImage - <label>.workflow`,
+  `winSlug(label)` → `FitImage_<slug>` registry subkey + `fitimage-menu-<slug>.vbs`.
+  Same label = update; new label = add. `MAX_ENTRIES` (10) caps additions
+  (updates are always allowed). `listMacEntries` / `listWindowsEntries` enumerate
+  installed entries for the Remove flow (and the legacy fixed `FitImage.workflow` /
+  `FitImage` key are still detected).
+- **macOS Info.plist / document.wflow are fragile.** They must include
+  `NSIconName` + `NSBackgroundColorName`, a full Finder binding in
+  `workflowMetaData` (`applicationBundleID*`, `serviceApplication*`),
+  `presentationMode 15`, and valid hex UUIDs, or the Quick Action silently fails to
+  appear in Finder on macOS 15+. `plutil -lint` checks XML syntax only — it does
+  **not** catch these. `installMac` runs `lsregister <bundle>` so the entry shows
+  up without a logout/Finder restart.
+- **Windows runs hidden.** The `.vbs` launches `node cli "%1" <flags>` via
+  `WScript.Shell.Run cmd, 0, True` (window style 0). Embedded quotes are spliced
+  through `Chr(34)` so shell-quoted flags don't break the script.
+
+If you change one-shot flags in `bin/cli.js`, keep `oneShotFlags` (in
+`interactive.js`, reused here) in sync.
+
+---
+
 ## 5. Testing
 
-Run `npm test` (Node's test runner; no framework). Two files:
+Run `npm test` (Node's test runner; no framework). Three files:
 
 - `test/compress.test.js` — **legacy/core regression. Treat as frozen** unless
   behaviour intentionally changes.
 - `test/interactive.test.js` — pure helpers, explicit-format conversions, affix
   semantics, and **end-to-end wizard runs**.
+- `test/menu.test.js` — right-click menu builders (macOS plist / Windows plan /
+  VBScript), naming helpers, and `installCommandMenu` add/update/remove/limit flows
+  driven with a fake `io` (same prompt-lockstep harness as the wizard tests).
 
 ### The wizard test harness (important gotcha)
 

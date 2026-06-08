@@ -5,6 +5,7 @@ import updateNotifier from 'update-notifier';
 import { run, DEFAULTS, extForFormat } from '../src/index.js';
 import { reportLines } from '../src/report.js';
 import { runInteractive } from '../src/interactive.js';
+import { installCommandMenu } from '../src/menu.js';
 
 const pkg = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8')
@@ -49,26 +50,10 @@ program
   .option('--dry-run', 'preview only; do not write or delete anything', false)
   .option('-v, --verbose', 'print every file', false)
   .option('-c, --concurrency <n>', 'number of parallel workers', parseIntArg('concurrency', 1, 64), DEFAULTS.concurrency)
+  .option('--install-menu', 'open the right-click-menu installer (add, update or remove Finder/Explorer entries), then exit', false)
   .action(async (target, options) => {
-    // No path (or -i) launches the wizard — but only when attached to a terminal.
-    if (options.interactive || !target) {
-      if (!process.stdin.isTTY) {
-        console.error(
-          'fitimage: interactive mode needs a terminal. Pass a <path> for ' +
-          'non-interactive use, or run `fitimage --help`.'
-        );
-        process.exitCode = 1;
-        return;
-      }
-      try {
-        await runInteractive();
-      } catch (err) {
-        console.error(`fitimage: ${(err && err.message) || err}`);
-        process.exitCode = 1;
-      }
-      return;
-    }
-
+    // Parse/validate --format and --prefix/--suffix once — shared by a normal
+    // run AND by --install-menu (which bakes these flags into the menu entry).
     let format = null;
     if (options.format) {
       format = String(options.format).toLowerCase();
@@ -89,6 +74,44 @@ program
       : options.suffix
         ? { position: 'suffix', text: options.suffix }
         : null;
+
+    // --install-menu launches the right-click-menu installer (a separate wizard)
+    // and exits without compressing. Works with or without a <path>/--format.
+    if (options.installMenu) {
+      if (!process.stdin.isTTY) {
+        console.error('fitimage: --install-menu needs a terminal (it asks a couple of questions).');
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        await installCommandMenu({
+          options: { quality: options.quality, format, affix, keepOriginal: options.keepOriginal },
+        });
+      } catch (err) {
+        console.error(`fitimage: ${(err && err.message) || err}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
+
+    // No path (or -i) launches the wizard — but only when attached to a terminal.
+    if (options.interactive || !target) {
+      if (!process.stdin.isTTY) {
+        console.error(
+          'fitimage: interactive mode needs a terminal. Pass a <path> for ' +
+          'non-interactive use, or run `fitimage --help`.'
+        );
+        process.exitCode = 1;
+        return;
+      }
+      try {
+        await runInteractive();
+      } catch (err) {
+        console.error(`fitimage: ${(err && err.message) || err}`);
+        process.exitCode = 1;
+      }
+      return;
+    }
 
     const opts = {
       quality: options.quality,
