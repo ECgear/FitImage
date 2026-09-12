@@ -78,10 +78,19 @@ export function resizeSpec(width, height, { maxWidth = null, maxHeight = null } 
   };
 }
 
-// Build the sharp pipeline for `input`, applying the resize step when given.
+// Shared decode pipeline for every encoder. `.rotate()` with no arguments applies
+// the EXIF orientation (then drops the tag, since sharp strips metadata by
+// default), so phone photos are not written sideways. The optional resize is
+// chained after it, so width/height limits apply to the displayed orientation.
 function load(input, resize) {
-  const img = sharp(input);
+  const img = sharp(input).rotate();
   return resize ? img.resize(resize) : img;
+}
+
+// Width/height as displayed: EXIF orientations 5-8 swap the stored axes.
+async function displayedSize(input) {
+  const { width, height, orientation } = await sharp(input).metadata();
+  return orientation >= 5 ? { width: height, height: width } : { width, height };
 }
 
 // Every encoder resolves to { data, info } (info carries the output width/height).
@@ -142,7 +151,7 @@ export async function processFile(file, opts, baseDir) {
   let origWidth;
   let origHeight;
   if (opts.maxWidth != null || opts.maxHeight != null) {
-    ({ width: origWidth, height: origHeight } = await sharp(input).metadata());
+    ({ width: origWidth, height: origHeight } = await displayedSize(input));
     resize = resizeSpec(origWidth, origHeight, opts);
   }
 

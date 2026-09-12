@@ -151,6 +151,23 @@ test('GIF input re-encodes in place when no --format given', async () => {
   assert.ok(await exists(path.join(dir, 'a.gif')), 'a.gif still present');
 });
 
+test('applies EXIF orientation so rotated photos are not sideways', async () => {
+  const dir = await tmpdir();
+  // Stored 400x200 with orientation 6 (rotate 90° CW) => displays as 200x400.
+  const data = await sharp({ create: { width: 400, height: 200, channels: 3, background: 'red' } })
+    .jpeg()
+    .withMetadata({ orientation: 6 })
+    .toBuffer();
+  await fs.writeFile(path.join(dir, 'portrait.jpg'), data);
+
+  const { summary } = await run(dir, { format: 'webp' });
+  assert.equal(summary.errors, 0);
+
+  const meta = await sharp(path.join(dir, 'portrait.webp')).metadata();
+  assert.deepEqual([meta.width, meta.height], [200, 400]);
+  assert.ok(!meta.orientation || meta.orientation === 1, `orientation ${meta.orientation}`);
+});
+
 test('--out writes to a separate dir and leaves sources intact', async () => {
   const src = await tmpdir();
   const out = await tmpdir();
@@ -228,4 +245,26 @@ test('resize dry-run reports the new size but writes nothing', async () => {
   const text = reportLines(out, { dryRun: true, verbose: true }).map((l) => l.text).join('\n');
   assert.match(text, /\(400x200 -> 100x50\)/);
   assert.match(text, /resized: 1/);
+});
+
+test('resize limits apply to the EXIF-oriented (displayed) size', async () => {
+  const dir = await tmpdir();
+  // Stored 400x200 with orientation 6 => displays as 200x400 (portrait).
+  const data = await sharp({ create: { width: 400, height: 200, channels: 3, background: 'red' } })
+    .jpeg()
+    .withMetadata({ orientation: 6 })
+    .toBuffer();
+  await fs.writeFile(path.join(dir, 'portrait.jpg'), data);
+
+  // Displayed height 400 > 100, so it must shrink to 50x100 (not 100x50).
+  const { results } = await run(dir, { maxHeight: 100, format: 'webp' });
+  assert.deepEqual(results[0].origSize, { width: 200, height: 400 });
+  assert.deepEqual(await dims(path.join(dir, 'portrait.webp')), [50, 100]);
+
+  // Displayed width 200 already fits a 300px limit: nothing to resize.
+  const again = await tmpdir();
+  await fs.writeFile(path.join(again, 'portrait.jpg'), data);
+  const out = await run(again, { maxWidth: 300, format: 'webp' });
+  assert.equal(out.results[0].resized, false);
+  assert.deepEqual(await dims(path.join(again, 'portrait.webp')), [200, 400]);
 });

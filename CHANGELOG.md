@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - An invalid `--quality`, `--concurrency`, `--max-width` or `--max-height` value
   now prints a one-line error instead of a stack trace.
 
+### Fixed
+- **Photos with EXIF orientation are no longer written sideways.** Every encoder
+  now auto-orients the image (sharp `.rotate()`) before encoding. Previously the
+  pixels were kept in their stored orientation while sharp dropped the
+  orientation tag, so e.g. portrait phone photos came out rotated.
+  `--max-width` / `--max-height` likewise apply to the displayed orientation.
+
 ## [0.5.0] - 2026-06-08
 
 ### Added
