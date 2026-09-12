@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-12
+
 ### Added
 - **Resize with a maximum width / height** (`--max-width <px>`, `--max-height <px>`):
   images larger than the limit are shrunk to fit, keeping the aspect ratio. Set
@@ -124,7 +126,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Programmatic API (`run`, `collectImages`, `processFile`, `summarize`).
 - Cross-platform CI (Ubuntu/macOS/Windows × Node 18/20/22).
 
-[Unreleased]: https://github.com/ECgear/FitImage/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/ECgear/FitImage/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ECgear/FitImage/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ECgear/FitImage/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ECgear/FitImage/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/ECgear/FitImage/compare/v0.3.1...v0.3.2
