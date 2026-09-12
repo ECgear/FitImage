@@ -109,6 +109,12 @@ Output format (size-reduced):               ← 出力形式
   4) PNG  (.png)
 > 2
 
+Image size:                                 ← 画像サイズ
+  1) Keep the original size                  （元のサイズのまま）
+  2) Limit the maximum width / height (aspect ratio kept)
+                                             （最大の幅・高さを指定・縦横比は維持）
+> 1
+
 Save mode:                                  ← 保存方法
   1) Overwrite originals (in place)          （上書き）
   2) Save as a new name (keep originals)     （別名で保存・元は残す）
@@ -118,6 +124,7 @@ Plan:                                        ← 実行内容の確認
   Folder : /Users/you/Pictures/旅行
   Images : 12
   Output : .webp (quality 75)
+  Size   : original size
   Naming : save as .webp next to originals (same name, originals kept)
 
 Proceed?                                     ← 実行しますか？
@@ -152,6 +159,18 @@ it reproduces this run in a single step.
 > 💡 **「付け足す位置（Prefix/Suffix）」を聞かれるのはどんな時？** … 出力に**同じ形式**を選んだ
 > 場合（例: `.jpg` を `.jpg` に圧縮）や、フォルダに**複数の拡張子が混在**している場合です。
 > このときは新ファイルが元と同名・同拡張子になり得るため、区別用の文字（先頭/末尾）を尋ねます。
+
+> **画像を小さくしたいときは**、「Image size」で `2` を選び、最大の幅と高さをピクセル数で
+> 入力します。片方だけ決めたいときは、もう片方を空のまま **Enter** で飛ばしてください。
+> 縦横比はそのまま保たれ、指定より小さい画像は拡大されずに元のサイズのまま残ります。
+>
+> ```
+> Maximum width in pixels (Enter = no limit): 1600
+> Maximum height in pixels (Enter = no limit):
+> ```
+>
+> この例では、横が 1600px を超える画像だけが横 1600px に縮小されます（3000×2000 の写真は
+> 1600×1067 になります）。コマンドで指定するときは `--max-width 1600` / `--max-height 900` です。
 
 > 🔁 **次回からは**、前回のフォルダが自動で提示されます。**Enter** で再利用、別の
 > パスを入力すれば変更できます。
@@ -417,6 +436,11 @@ Output format (size-reduced):
   4) PNG  (.png)
 > 2
 
+Image size:
+  1) Keep the original size
+  2) Limit the maximum width / height (aspect ratio kept)
+> 1
+
 Save mode:
   1) Overwrite originals (in place)
   2) Save as a new name (keep originals)
@@ -426,6 +450,7 @@ Plan:
   Folder : /Users/you/Pictures/trip
   Images : 12
   Output : .webp (quality 75)
+  Size   : original size
   Naming : save as .webp next to originals (same name, originals kept)
 
 Proceed?
@@ -461,6 +486,12 @@ extension can't overwrite them). No "text to add" is needed, so it isn't asked.
 > **same** format as your files (e.g. `.jpg` → `.jpg`), or the folder mixes
 > extensions — there the new file could share the original's name and extension,
 > so FitImage asks for a distinguishing prefix/suffix.
+
+> **To make images smaller in pixels**, pick `2` at "Image size" and type the
+> maximum width and/or height. Press **Enter** to leave one of them unlimited.
+> The aspect ratio is always kept, and images already within the limit are never
+> enlarged — e.g. a maximum width of `1600` turns a 3000×2000 photo into 1600×1067.
+> On the command line this is `--max-width 1600` / `--max-height 900`.
 
 > 🔁 **Next time** you run `fitimage`, it remembers the last folder and offers it
 > automatically — just press **Enter** to reuse it, or type a different path.
@@ -586,6 +617,9 @@ fitimage ./images --format webp --suffix _min
 
 # Stronger compression, also turn PNGs into JPGs, keep the original .webp files
 fitimage ./images -q 60 --png-to-jpg --keep-original
+
+# Shrink images to fit within 1600x900 px (aspect ratio kept, never enlarged)
+fitimage ./images --max-width 1600 --max-height 900
 ```
 
 > ⚠️ **With a `<path>` and no `--prefix/--suffix/--out`, FitImage works in place**
@@ -600,6 +634,8 @@ fitimage ./images -q 60 --png-to-jpg --keep-original
 | _(no path)_ / `-i, --interactive` | — | Launch the interactive wizard (needs a terminal) |
 | `-q, --quality <n>` | `75` | JPEG/WebP quality (1–100) |
 | `-f, --format <fmt>` | — | Force output format: `jpg` \| `webp` \| `png` \| `gif` |
+| `--max-width <px>` | — | Shrink images wider than `<px>` to that width (aspect ratio kept, never enlarged) |
+| `--max-height <px>` | — | Shrink images taller than `<px>` to that height (aspect ratio kept, never enlarged) |
 | `--prefix <text>` | — | Save under a new name: add `<text>` to the **start** of the filename |
 | `--suffix <text>` | — | Save under a new name: add `<text>` to the **end** of the filename |
 | `-o, --out <dir>` | — | Write results to this directory (non-destructive) |
@@ -612,6 +648,9 @@ fitimage ./images -q 60 --png-to-jpg --keep-original
 | `--install-menu` | off | Open the right-click-menu installer (add / update / remove Finder / Explorer entries), then exit |
 
 `--prefix`/`--suffix` always keep the originals (the renamed copy is a new file).
+With both `--max-width` and `--max-height`, the image is fitted inside that box, so
+whichever limit is tighter decides the final size. A resized image is always
+written, even when it is re-saved in its original format.
 The interactive wizard always uses quality **75**; use `-q/--quality` on the
 command line for other values.
 
@@ -666,7 +705,10 @@ tools (`osascript` / `reg` / `wscript`) — no extra dependencies.
 import { run } from '@ecgear/fitimage';
 
 const { summary } = await run('./images', { quality: 70, out: './out' });
-console.log(summary); // { count, written, skipped, errors, origTotal, newTotal, saved, pct }
+console.log(summary); // { count, written, skipped, errors, resized, origTotal, newTotal, saved, pct }
+
+// Shrink to at most 1600 px wide (aspect ratio kept); maxHeight works the same way:
+await run('./images', { maxWidth: 1600, out: './out' });
 
 // Convert to WebP, writing *_min.webp beside each source (originals kept):
 await run('./images', { format: 'webp', affix: { position: 'suffix', text: '_min' } });

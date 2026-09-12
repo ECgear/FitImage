@@ -5,7 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import sharp from 'sharp';
 
-import { run, collectImages } from '../src/index.js';
+import { run, collectImages, resizeSpec } from '../src/index.js';
+import { reportLines } from '../src/report.js';
 
 const W = 256, H = 256, C = 3;
 
@@ -159,4 +160,72 @@ test('--out writes to a separate dir and leaves sources intact', async () => {
   await run(src, { quality: 40, out });
   assert.equal((await fs.stat(file)).size, before, 'source untouched');
   assert.ok(await exists(path.join(out, 'a.jpg')), 'output written');
+});
+
+// ---- resize: max width / max height (aspect ratio kept) --------------------
+
+async function writeWide(file, width = 400, height = 200) {
+  const data = await sharp({ create: { width, height, channels: 3, background: '#3a7' } })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+  await fs.writeFile(file, data);
+}
+
+async function dims(file) {
+  const { width, height } = await sharp(file).metadata();
+  return [width, height];
+}
+
+test('resizeSpec returns null when the image already fits', () => {
+  assert.equal(resizeSpec(400, 200, {}), null);
+  assert.equal(resizeSpec(400, 200, { maxWidth: 400 }), null);
+  assert.equal(resizeSpec(400, 200, { maxWidth: 1000, maxHeight: 1000 }), null);
+  assert.deepEqual(resizeSpec(400, 200, { maxWidth: 100 }), {
+    width: 100, height: undefined, fit: 'inside', withoutEnlargement: true,
+  });
+});
+
+test('maxWidth shrinks the width and keeps the aspect ratio', async () => {
+  const dir = await tmpdir();
+  await writeWide(path.join(dir, 'a.jpg'));
+  const { results, summary } = await run(dir, { maxWidth: 100 });
+  assert.equal(summary.errors, 0);
+  assert.equal(summary.resized, 1);
+  assert.deepEqual(await dims(path.join(dir, 'a.jpg')), [100, 50]);
+  assert.deepEqual(results[0].origSize, { width: 400, height: 200 });
+  assert.deepEqual(results[0].newSize, { width: 100, height: 50 });
+});
+
+test('maxHeight shrinks the height and keeps the aspect ratio', async () => {
+  const dir = await tmpdir();
+  await writeWide(path.join(dir, 'a.jpg'));
+  await run(dir, { maxHeight: 50, format: 'webp' });
+  assert.deepEqual(await dims(path.join(dir, 'a.webp')), [100, 50]);
+});
+
+test('with both limits the tighter one wins', async () => {
+  const dir = await tmpdir();
+  await writeWide(path.join(dir, 'a.jpg'));
+  await run(dir, { maxWidth: 300, maxHeight: 50, format: 'png' });
+  assert.deepEqual(await dims(path.join(dir, 'a.png')), [100, 50]);
+});
+
+test('images smaller than the limit are never enlarged', async () => {
+  const dir = await tmpdir();
+  await writeWide(path.join(dir, 'a.jpg'));
+  const { results, summary } = await run(dir, { maxWidth: 1000, maxHeight: 1000, format: 'webp' });
+  assert.equal(summary.resized, 0);
+  assert.equal(results[0].resized, false);
+  assert.deepEqual(await dims(path.join(dir, 'a.webp')), [400, 200]);
+});
+
+test('resize dry-run reports the new size but writes nothing', async () => {
+  const dir = await tmpdir();
+  await writeWide(path.join(dir, 'a.jpg'));
+  const out = await run(dir, { maxWidth: 100, dryRun: true });
+  assert.deepEqual(out.results[0].newSize, { width: 100, height: 50 });
+  assert.deepEqual(await dims(path.join(dir, 'a.jpg')), [400, 200]);
+  const text = reportLines(out, { dryRun: true, verbose: true }).map((l) => l.text).join('\n');
+  assert.match(text, /\(400x200 -> 100x50\)/);
+  assert.match(text, /resized: 1/);
 });

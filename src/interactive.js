@@ -46,8 +46,10 @@ export async function saveConfig(p, data) {
 // ---- pure helpers ----------------------------------------------------------
 
 /** Build a run() options object from the wizard's collected answers. */
-export function buildOptions({ format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
-  return { quality, recursive: true, format, affix, keepOriginal };
+export function buildOptions({
+  format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false, maxWidth = null, maxHeight = null,
+} = {}) {
+  return { quality, recursive: true, format, affix, keepOriginal, maxWidth, maxHeight };
 }
 
 /**
@@ -77,11 +79,15 @@ export function shellQuote(value) {
  * - keepOriginal -> --keep-original           (save-as-new with no rename: a new
  *                   extension already yields a distinct name, so the source is kept)
  * - quality      -> --quality <n>             (omitted when equal to the default)
+ * - maxWidth     -> --max-width <px>          (omitted = no width limit)
+ * - maxHeight    -> --max-height <px>         (omitted = no height limit)
  *
  * Shared by buildOneShotCommand (here) and the right-click menu installer
  * (src/menu.js), which bakes these same flags into a Finder/Explorer entry.
  */
-export function oneShotFlags({ format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
+export function oneShotFlags({
+  format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false, maxWidth = null, maxHeight = null,
+} = {}) {
   const parts = [];
   if (format) parts.push('--format', format);
   if (affix && affix.text) {
@@ -90,6 +96,8 @@ export function oneShotFlags({ format = null, affix = null, quality = DEFAULTS.q
     parts.push('--keep-original');
   }
   if (quality != null && quality !== DEFAULTS.quality) parts.push('--quality', String(quality));
+  if (maxWidth != null) parts.push('--max-width', String(maxWidth));
+  if (maxHeight != null) parts.push('--max-height', String(maxHeight));
   return parts;
 }
 
@@ -100,8 +108,17 @@ export function oneShotFlags({ format = null, affix = null, quality = DEFAULTS.q
  * - folder       -> the positional <path> (quoted when needed)
  * - (see oneShotFlags for the option flags)
  */
-export function buildOneShotCommand({ folder, format = null, affix = null, quality = DEFAULTS.quality, keepOriginal = false } = {}) {
-  return ['fitimage', shellQuote(folder), ...oneShotFlags({ format, affix, quality, keepOriginal })].join(' ');
+export function buildOneShotCommand({ folder, ...options } = {}) {
+  return ['fitimage', shellQuote(folder), ...oneShotFlags(options)].join(' ');
+}
+
+/** Describe a max-width/max-height limit for the plan summary, or null if none. */
+export function describeResize({ maxWidth = null, maxHeight = null } = {}) {
+  if (maxWidth == null && maxHeight == null) return null;
+  const limits = [];
+  if (maxWidth != null) limits.push(`width ${maxWidth}px`);
+  if (maxHeight != null) limits.push(`height ${maxHeight}px`);
+  return `shrink to at most ${limits.join(' and ')} (aspect ratio kept, never enlarged)`;
 }
 
 function expandHome(p) {
@@ -156,6 +173,31 @@ async function askAffixText(rl, output) {
   }
 }
 
+// Ask for a maximum pixel size. Enter (empty) means "no limit" and returns null.
+async function askMaxPixels(rl, output, label) {
+  for (;;) {
+    const answer = (await rl.question(`${label} in pixels (Enter = no limit): `)).trim();
+    if (answer === '') return null;
+    const n = Number(answer);
+    if (/^\d+$/.test(answer) && n >= 1 && n <= 100000) return n;
+    output.write('Please enter a whole number between 1 and 100000, or press Enter to skip.\n');
+  }
+}
+
+async function askResize(rl, output) {
+  const pick = await choose(rl, output, 'Image size:', [
+    'Keep the original size',
+    'Limit the maximum width / height (aspect ratio kept)',
+  ]);
+  if (pick === 0) return { maxWidth: null, maxHeight: null };
+  for (;;) {
+    const maxWidth = await askMaxPixels(rl, output, 'Maximum width');
+    const maxHeight = await askMaxPixels(rl, output, 'Maximum height');
+    if (maxWidth != null || maxHeight != null) return { maxWidth, maxHeight };
+    output.write('Enter at least one of width or height.\n');
+  }
+}
+
 function emit(output, out, opts) {
   for (const line of reportLines(out, opts)) output.write(line.text + '\n');
 }
@@ -177,6 +219,8 @@ async function offerOneShotCommand(rl, output, { folder, options }) {
     affix: options.affix,
     keepOriginal: options.keepOriginal,
     quality: options.quality,
+    maxWidth: options.maxWidth,
+    maxHeight: options.maxHeight,
   });
 
   output.write('\nOne-Shot Command — run this in your terminal to repeat exactly this operation:\n\n');
@@ -228,6 +272,9 @@ export async function runInteractive({
     ]);
     const format = FORMATS[fmtIdx];
 
+    // 3b. Optional resize: cap the width and/or height, keeping the aspect ratio.
+    const { maxWidth, maxHeight } = await askResize(rl, output);
+
     // 4. Overwrite vs. save under a new name. The text-position question only
     // applies to "save as a new name"; overwrite leaves the filename unchanged.
     const saveMode = await choose(rl, output, 'Save mode:', [
@@ -256,7 +303,7 @@ export async function runInteractive({
       }
     }
 
-    const options = buildOptions({ format, affix, keepOriginal });
+    const options = buildOptions({ format, affix, keepOriginal, maxWidth, maxHeight });
 
     // 5. Plan summary + safety gate.
     const naming = affix
@@ -268,6 +315,7 @@ export async function runInteractive({
     output.write(`  Folder : ${folder}\n`);
     output.write(`  Images : ${files.length}\n`);
     output.write(`  Output : .${format} (quality ${options.quality})\n`);
+    output.write(`  Size   : ${describeResize(options) ?? 'original size'}\n`);
     output.write(`  Naming : ${naming}\n`);
 
     const action = await choose(rl, output, 'Proceed?', [

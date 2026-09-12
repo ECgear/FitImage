@@ -29,9 +29,12 @@ export function reportLines(out, { dryRun = false, verbose = false } = {}) {
     } else if (verbose) {
       if (r.willWrite) {
         const arrow = r.convertsFormat ? ` -> ${r.destPath}` : '';
+        const dims = r.resized
+          ? `  (${r.origSize.width}x${r.origSize.height} -> ${r.newSize.width}x${r.newSize.height})`
+          : '';
         lines.push({
           level: 'log',
-          text: `  ${tag}${fmtBytes(r.origBytes)} -> ${fmtBytes(r.newBytes)}  ${r.file}${arrow}`,
+          text: `  ${tag}${fmtBytes(r.origBytes)} -> ${fmtBytes(r.newBytes)}  ${r.file}${arrow}${dims}`,
         });
       } else {
         lines.push({ level: 'log', text: `  ${tag}skip (no gain)  ${r.file}` });
@@ -41,7 +44,8 @@ export function reportLines(out, { dryRun = false, verbose = false } = {}) {
 
   lines.push({
     level: 'log',
-    text: `\n${tag}${s.count} image(s) | written: ${s.written} | skipped: ${s.skipped} | errors: ${s.errors}`,
+    text: `\n${tag}${s.count} image(s) | written: ${s.written} | skipped: ${s.skipped} | errors: ${s.errors}` +
+      (s.resized ? ` | resized: ${s.resized}` : ''),
   });
   lines.push({
     level: 'log',

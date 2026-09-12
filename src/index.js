@@ -20,6 +20,8 @@ export const DEFAULTS = {
   concurrency: 4,
   format: null,      // null = legacy adaptive behaviour; else 'jpg'|'jpeg'|'png'|'webp'|'gif'
   affix: null,       // null = overwrite in place; else { position:'prefix'|'suffix', text }
+  maxWidth: null,    // null = no limit; else shrink so width <= maxWidth (aspect ratio kept)
+  maxHeight: null,   // null = no limit; else shrink so height <= maxHeight (aspect ratio kept)
 };
 
 // Map a chosen output format to its file extension. Returns null for unknown.
@@ -58,44 +60,70 @@ export async function collectImages(dir, recursive = true) {
   return out.sort();
 }
 
+/**
+ * Decide how to resize an image of `width` x `height` so it fits within
+ * maxWidth x maxHeight (either may be null = unlimited). Returns a sharp
+ * resize() options object, or null when the image already fits. Images are
+ * only ever shrunk, never enlarged, and the aspect ratio is always kept.
+ */
+export function resizeSpec(width, height, { maxWidth = null, maxHeight = null } = {}) {
+  const tooWide = maxWidth != null && width > maxWidth;
+  const tooTall = maxHeight != null && height > maxHeight;
+  if (!tooWide && !tooTall) return null;
+  return {
+    width: maxWidth ?? undefined,
+    height: maxHeight ?? undefined,
+    fit: 'inside',
+    withoutEnlargement: true,
+  };
+}
+
+// Build the sharp pipeline for `input`, applying the resize step when given.
+function load(input, resize) {
+  const img = sharp(input);
+  return resize ? img.resize(resize) : img;
+}
+
+// Every encoder resolves to { data, info } (info carries the output width/height).
+const WITH_INFO = { resolveWithObject: true };
+
 // Encode to JPEG. mozjpeg=true uses sharp's bundled mozjpeg (BSD/IJG, permissive).
 // If the local libvips build lacks mozjpeg, transparently retry without it.
-async function encodeJpeg(input, quality) {
+async function encodeJpeg(input, quality, resize) {
   try {
-    return await sharp(input).jpeg({ quality, mozjpeg: true }).toBuffer();
+    return await load(input, resize).jpeg({ quality, mozjpeg: true }).toBuffer(WITH_INFO);
   } catch (err) {
     if (/mozjpeg/i.test(String(err && err.message))) {
-      return await sharp(input).jpeg({ quality }).toBuffer();
+      return await load(input, resize).jpeg({ quality }).toBuffer(WITH_INFO);
     }
     throw err;
   }
 }
 
 // Re-encode PNG losslessly-ish (zlib). palette:false keeps the truecolour path.
-async function encodePng(input) {
-  return await sharp(input).png({ compressionLevel: 9, palette: false }).toBuffer();
+async function encodePng(input, resize) {
+  return await load(input, resize).png({ compressionLevel: 9, palette: false }).toBuffer(WITH_INFO);
 }
 
 // Encode to WebP via libwebp (BSD). quality applies to lossy WebP.
-async function encodeWebp(input, quality) {
-  return await sharp(input).webp({ quality }).toBuffer();
+async function encodeWebp(input, quality, resize) {
+  return await load(input, resize).webp({ quality }).toBuffer(WITH_INFO);
 }
 
 // Encode to GIF via cgif (MIT) + sharp's bundled libimagequant fork (BSD-2-Clause).
 // Note: GIF is a 256-colour palette format, so photographic output can be LARGER
 // than the source — the caller surfaces the size delta either way.
-async function encodeGif(input) {
-  return await sharp(input).gif().toBuffer();
+async function encodeGif(input, resize) {
+  return await load(input, resize).gif().toBuffer(WITH_INFO);
 }
 
-// Encode `input` to an explicit output format. Returns { buffer, outExt }.
-async function encodeAs(format, input, quality) {
-  const outExt = extForFormat(format);
-  switch (outExt) {
-    case '.jpg':  return { buffer: await encodeJpeg(input, quality), outExt };
-    case '.png':  return { buffer: await encodePng(input), outExt };
-    case '.webp': return { buffer: await encodeWebp(input, quality), outExt };
-    case '.gif':  return { buffer: await encodeGif(input), outExt };
+// Encode `input` to an explicit output format. Returns { data, info }.
+async function encodeAs(format, input, quality, resize) {
+  switch (extForFormat(format)) {
+    case '.jpg':  return await encodeJpeg(input, quality, resize);
+    case '.png':  return await encodePng(input, resize);
+    case '.webp': return await encodeWebp(input, quality, resize);
+    case '.gif':  return await encodeGif(input, resize);
     default: throw new Error(`unsupported output format: ${format}`);
   }
 }
@@ -109,35 +137,45 @@ export async function processFile(file, opts, baseDir) {
   const origBytes = (await fs.stat(file)).size;
   const input = await fs.readFile(file);
 
-  let outBuffer;
+  // Optional downscale to fit within maxWidth x maxHeight (aspect ratio kept).
+  let resize = null;
+  let origWidth;
+  let origHeight;
+  if (opts.maxWidth != null || opts.maxHeight != null) {
+    ({ width: origWidth, height: origHeight } = await sharp(input).metadata());
+    resize = resizeSpec(origWidth, origHeight, opts);
+  }
+
+  let enc;
   let outExt;
 
   if (opts.format) {
     // Explicit output format: encode every input to the chosen format.
-    const enc = await encodeAs(opts.format, input, opts.quality);
-    outBuffer = enc.buffer;
-    outExt = enc.outExt;
+    enc = await encodeAs(opts.format, input, opts.quality, resize);
+    outExt = extForFormat(opts.format);
   } else if (ext === '.webp') {
-    outBuffer = await encodeJpeg(input, opts.quality);
+    enc = await encodeJpeg(input, opts.quality, resize);
     outExt = '.jpg';
   } else if (ext === '.gif') {
     // Re-encode GIF in place (keeps the palette format).
-    outBuffer = await encodeGif(input);
+    enc = await encodeGif(input, resize);
     outExt = '.gif';
   } else if (ext === '.png') {
     if (opts.pngToJpg) {
-      outBuffer = await encodeJpeg(input, opts.quality);
+      enc = await encodeJpeg(input, opts.quality, resize);
       outExt = '.jpg';
     } else {
-      outBuffer = await encodePng(input);
+      enc = await encodePng(input, resize);
       outExt = '.png';
     }
   } else {
     // .jpg / .jpeg — re-encode, keep the original extension
-    outBuffer = await encodeJpeg(input, opts.quality);
+    enc = await encodeJpeg(input, opts.quality, resize);
     outExt = ext;
   }
+  const outBuffer = enc.data;
   const convertsFormat = outExt !== ext;
+  const resized = resize != null;
 
   // Destination path. An affix renames only the basename (subdirs are preserved);
   // an affix or --out always writes beside/under a new name and never deletes the source.
@@ -152,8 +190,8 @@ export async function processFile(file, opts, baseDir) {
 
   const newBytes = outBuffer.length;
   // Same-format in-place re-compression only writes if it actually shrinks.
-  // Format conversions, --out and renamed (affix) outputs always write.
-  const willWrite = (opts.out || opts.affix) ? true : (convertsFormat ? true : newBytes < origBytes);
+  // Format conversions, resizes, --out and renamed (affix) outputs always write.
+  const willWrite = (opts.out || opts.affix || convertsFormat || resized) ? true : newBytes < origBytes;
 
   const result = {
     file,
@@ -161,9 +199,14 @@ export async function processFile(file, opts, baseDir) {
     origBytes,
     newBytes: willWrite ? newBytes : origBytes,
     convertsFormat,
+    resized,
     willWrite,
     wrote: false,
   };
+  if (resized) {
+    result.origSize = { width: origWidth, height: origHeight };
+    result.newSize = { width: enc.info.width, height: enc.info.height };
+  }
 
   if (opts.dryRun || !willWrite) return result;
 
@@ -218,15 +261,16 @@ export async function run(target, options = {}) {
 
 /** Aggregate per-file results into totals. */
 export function summarize(results) {
-  let origTotal = 0, newTotal = 0, written = 0, errors = 0, skipped = 0;
+  let origTotal = 0, newTotal = 0, written = 0, errors = 0, skipped = 0, resized = 0;
   for (const r of results) {
     if (r.error) { errors++; continue; }
     origTotal += r.origBytes;
     newTotal += r.newBytes;
+    if (r.resized) resized++;
     if (r.wrote) written++;
     else if (!r.willWrite) skipped++;
   }
   const saved = origTotal - newTotal;
   const pct = origTotal > 0 ? (saved / origTotal) * 100 : 0;
-  return { count: results.length, written, skipped, errors, origTotal, newTotal, saved, pct };
+  return { count: results.length, written, skipped, errors, resized, origTotal, newTotal, saved, pct };
 }

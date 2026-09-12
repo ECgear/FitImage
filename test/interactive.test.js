@@ -78,14 +78,14 @@ test('applyAffix adds prefix/suffix and is a no-op when null', () => {
 
 test('buildOptions produces run() options with quality 75', () => {
   assert.deepEqual(buildOptions({ format: 'webp' }), {
-    quality: 75, recursive: true, format: 'webp', affix: null, keepOriginal: false,
+    quality: 75, recursive: true, format: 'webp', affix: null, keepOriginal: false, maxWidth: null, maxHeight: null,
   });
   assert.deepEqual(buildOptions({ format: 'jpg', affix: { position: 'suffix', text: '_x' } }), {
-    quality: 75, recursive: true, format: 'jpg', affix: { position: 'suffix', text: '_x' }, keepOriginal: false,
+    quality: 75, recursive: true, format: 'jpg', affix: { position: 'suffix', text: '_x' }, keepOriginal: false, maxWidth: null, maxHeight: null,
   });
   // Save-as-new with no rename (a new format already yields a distinct name).
   assert.deepEqual(buildOptions({ format: 'webp', keepOriginal: true }), {
-    quality: 75, recursive: true, format: 'webp', affix: null, keepOriginal: true,
+    quality: 75, recursive: true, format: 'webp', affix: null, keepOriginal: true, maxWidth: null, maxHeight: null,
   });
 });
 
@@ -118,6 +118,21 @@ test('buildOneShotCommand mirrors the wizard choices as fitimage flags', () => {
   assert.equal(
     buildOneShotCommand({ folder: '/photos', format: 'jpg', quality: 60 }),
     'fitimage /photos --format jpg --quality 60',
+  );
+});
+
+test('buildOneShotCommand includes --max-width/--max-height when set', () => {
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'jpg', maxWidth: 1600 }),
+    'fitimage /photos --format jpg --max-width 1600',
+  );
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'webp', maxWidth: 1600, maxHeight: 900 }),
+    'fitimage /photos --format webp --max-width 1600 --max-height 900',
+  );
+  assert.equal(
+    buildOneShotCommand({ folder: '/photos', format: 'png', maxHeight: 500 }),
+    'fitimage /photos --format png --max-height 500',
   );
 });
 
@@ -186,6 +201,7 @@ test('wizard: rename (same format) + run writes a renamed file and remembers the
   const { result, text } = await driveWizard([
     dir,     // target folder (none remembered)
     '1',     // format: jpg (same extension as the source)
+    '1',     // image size: keep original
     '2',     // save mode: save as new name
     '2',     // position: suffix
     '_min',  // text
@@ -223,6 +239,7 @@ test('wizard: save-as-new with a new format skips the text question and keeps th
   const { result, text } = await driveWizard([
     dir,   // target folder
     '2',   // format: webp (different extension than the .jpg source)
+    '1',   // image size: keep original
     '2',   // save mode: save as new name
     '1',   // proceed: run now
     '1',   // one-shot command: yes, show it
@@ -244,6 +261,53 @@ test('wizard: save-as-new with a new format skips the text question and keeps th
   assert.ok(text.includes(expected), `printed one-shot command "${expected}"`);
 });
 
+test('wizard: limiting the maximum width resizes and keeps the aspect ratio', async () => {
+  const dir = await tmpdir();
+  await writeJpeg(path.join(dir, 'a.jpg'));
+  const configPath = path.join(await tmpdir(), 'config.json');
+  const { width: srcW, height: srcH } = await sharp(path.join(dir, 'a.jpg')).metadata();
+  const maxW = Math.floor(srcW / 2);
+
+  const { result, text } = await driveWizard([
+    dir,           // target folder
+    '1',           // format: jpg
+    '2',           // image size: limit the maximum width / height
+    'abc',         // invalid width -> asked again
+    String(maxW),  // maximum width
+    '',            // maximum height: no limit
+    '1',           // save mode: overwrite
+    '1',           // proceed: run now
+    '1',           // one-shot command: yes, show it
+  ], { cwd: dir, configPath });
+
+  assert.ok(result, 'wizard returned a result');
+  assert.equal(result.summary.errors, 0);
+  assert.equal(result.summary.resized, 1);
+  assert.match(text, /Please enter a whole number/);
+  assert.match(text, new RegExp(`Size   : shrink to at most width ${maxW}px`));
+  const meta = await sharp(path.join(dir, 'a.jpg')).metadata();
+  assert.equal(meta.width, maxW);
+  assert.equal(meta.height, Math.round(srcH * maxW / srcW));
+  assert.ok(text.includes(`fitimage ${path.resolve(dir)} --format jpg --max-width ${maxW}`), 'one-shot has --max-width');
+});
+
+test('wizard: resize with both limits left empty asks again', async () => {
+  const dir = await tmpdir();
+  await writeJpeg(path.join(dir, 'a.jpg'));
+  const configPath = path.join(await tmpdir(), 'config.json');
+
+  const { text } = await driveWizard([
+    dir, '2', '2',
+    '', '',        // both empty -> asked again
+    '', '10',      // max height 10
+    '2',           // save mode: save as new name (webp next to jpg)
+    '3',           // cancel
+  ], { cwd: dir, configPath });
+
+  assert.match(text, /Enter at least one of width or height/);
+  assert.match(text, /Size   : shrink to at most height 10px/);
+});
+
 test('wizard: dry-run preview then decline writes nothing', async () => {
   const dir = await tmpdir();
   const before = await writeJpeg(path.join(dir, 'a.jpg'));
@@ -252,6 +316,7 @@ test('wizard: dry-run preview then decline writes nothing', async () => {
   const { result, text } = await driveWizard([
     dir,   // target folder
     '3',   // format: gif
+    '1',   // image size: keep original
     '1',   // save mode: overwrite
     '2',   // proceed: dry-run preview first
     'n',   // run for real? -> no

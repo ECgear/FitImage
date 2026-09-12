@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Resize with a maximum width / height** (`--max-width <px>`, `--max-height <px>`):
+  images larger than the limit are shrunk to fit, keeping the aspect ratio. Set
+  one or both; with both, the image fits inside that box. Images already within
+  the limit are never enlarged. A resized image is always written, even when it
+  is re-saved in its original format.
+  - The interactive wizard asks "Image size" after the output format; the plan
+    summary, the One-Shot Command and `--install-menu` entries carry the limits.
+  - `--verbose` shows the pixel size change per file (e.g. `3000x2000 -> 1600x1067`),
+    and the summary line adds `resized: N`.
+  - Programmatic API: `run(target, { maxWidth, maxHeight })`; `summary.resized`.
+
+### Changed
+- An invalid `--quality`, `--concurrency`, `--max-width` or `--max-height` value
+  now prints a one-line error instead of a stack trace.
+
 ## [0.5.0] - 2026-06-08
 
 ### Added

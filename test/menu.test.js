@@ -193,6 +193,15 @@ test('installCommandMenu on an unsupported platform only prints manual help', as
   assert.match(text, /--format webp/);
 });
 
+test('installCommandMenu bakes --max-width/--max-height into the menu command', async () => {
+  let text = '';
+  const output = new Writable({ write(c, _e, cb) { text += c.toString(); cb(); } });
+  await installCommandMenu({
+    platform: 'linux', options: { format: 'jpg', maxWidth: 1600, maxHeight: 900 }, output, io: throwingIO(),
+  });
+  assert.match(text, /--format jpg --max-width 1600 --max-height 900/);
+});
+
 test('installCommandMenu installs a macOS Quick Action via the injected io', async () => {
   const io = fakeIO();
   const { result, text } = await driveMenu(['1', 'My Label'], {

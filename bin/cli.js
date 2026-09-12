@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import updateNotifier from 'update-notifier';
 import { run, DEFAULTS, extForFormat } from '../src/index.js';
 import { reportLines } from '../src/report.js';
@@ -18,7 +18,7 @@ function parseIntArg(name, min, max) {
   return (value) => {
     const n = parseInt(value, 10);
     if (Number.isNaN(n) || n < min || n > max) {
-      throw new Error(`--${name} must be an integer between ${min} and ${max}`);
+      throw new InvalidArgumentError(`must be an integer between ${min} and ${max}.`);
     }
     return n;
   };
@@ -41,6 +41,8 @@ program
   .option('-i, --interactive', 'launch the interactive wizard', false)
   .option('-q, --quality <n>', 'JPEG/WebP quality (1-100)', parseIntArg('quality', 1, 100), DEFAULTS.quality)
   .option('-f, --format <fmt>', 'force output format: jpg | webp | png | gif')
+  .option('--max-width <px>', 'shrink images wider than <px> (aspect ratio kept, never enlarged)', parseIntArg('max-width', 1, 100000))
+  .option('--max-height <px>', 'shrink images taller than <px> (aspect ratio kept, never enlarged)', parseIntArg('max-height', 1, 100000))
   .option('--prefix <text>', 'save under a new name: add <text> to the start of the filename')
   .option('--suffix <text>', 'save under a new name: add <text> to the end of the filename')
   .option('-o, --out <dir>', 'write results to this directory (non-destructive)')
@@ -69,6 +71,9 @@ program
       process.exitCode = 1;
       return;
     }
+    const maxWidth = options.maxWidth ?? null;
+    const maxHeight = options.maxHeight ?? null;
+
     const affix = options.prefix
       ? { position: 'prefix', text: options.prefix }
       : options.suffix
@@ -85,7 +90,7 @@ program
       }
       try {
         await installCommandMenu({
-          options: { quality: options.quality, format, affix, keepOriginal: options.keepOriginal },
+          options: { quality: options.quality, format, affix, keepOriginal: options.keepOriginal, maxWidth, maxHeight },
         });
       } catch (err) {
         console.error(`fitimage: ${(err && err.message) || err}`);
@@ -123,6 +128,8 @@ program
       concurrency: options.concurrency,
       format,
       affix,
+      maxWidth,
+      maxHeight,
     };
 
     let out;
