@@ -1,6 +1,6 @@
 {
   "name": "@ecgear/fitimage",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Cross-platform batch image compressor with an interactive mode — shrink and convert between JPG/WebP/PNG/GIF, powered by sharp. No deprecated dependencies, no GPL codecs.",
   "type": "module",
   "publishConfig": {
@@ -22,7 +22,7 @@
     "CHANGELOG.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20.9.0"
   },
   "scripts": {
     "start": "node bin/cli.js",

@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-25
+
+### Security
+- Upgrade **sharp** from 0.33 to **0.35.5**. sharp 0.33.x bundles libvips,
+  libheif and librsvg versions with known vulnerabilities
+  ([GHSA-f88m-g3jw-g9cj](https://github.com/advisories/GHSA-f88m-g3jw-g9cj),
+  [GHSA-rgj7-g3m4-5g8c](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c),
+  [GHSA-wq5f-xc86-pv6w](https://github.com/advisories/GHSA-wq5f-xc86-pv6w)),
+  fixed in sharp 0.35.0, 0.35.4 and 0.35.5. Users of 0.6.0 should update.
+
+### Changed
+- **Node.js 20.9.0 or later is now required** (was 18). sharp 0.35 no longer
+  supports Node.js 18, which reached end of life in April 2025.
+
 ## [0.6.0] - 2026-09-12
 
 ### Added
@@ -127,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-platform CI (Ubuntu/macOS/Windows × Node 18/20/22).
 
 [Unreleased]: https://github.com/ECgear/FitImage/compare/v0.6.0...HEAD
+[0.6.1]: https://github.com/ECgear/FitImage/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ECgear/FitImage/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ECgear/FitImage/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ECgear/FitImage/compare/v0.3.2...v0.4.0

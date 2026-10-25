@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/ECgear/FitImage/actions/workflows/ci.yml/badge.svg)](https://github.com/ECgear/FitImage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.9-brightgreen.svg)](https://nodejs.org/)
 
 > 🇬🇧 **English version is at the bottom of this page — jump to [English ↓](#english).**
 
