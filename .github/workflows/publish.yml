@@ -1,0 +1,30 @@
+name: Publish
+
+# npm の trusted publishing（OIDC）で公開する。npm 側のパッケージ設定で、
+# このリポジトリとファイル名 publish.yml を Trusted Publisher に登録してから使う。
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - name: タグと package.json の版が一致するか確かめる
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          [ "$v" = "$GITHUB_REF_NAME" ] || { echo "タグ $GITHUB_REF_NAME と package.json の $v が違う"; exit 1; }
+      - run: npm ci
+      - run: npm run preflight
+      - run: npm test
+      - run: npm publish
